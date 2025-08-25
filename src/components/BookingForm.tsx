@@ -1,21 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, EuroIcon, UsersIcon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import type { Booking, ShopSettings } from "./Dashboard";
+import type { Booking, ShopSettings, BikeDetails, BookingCategory } from "./Dashboard";
+import { BikeSelector } from "./BikeSelector";
 
 interface BookingFormProps {
-  onSubmit: (booking: Omit<Booking, "id">) => void;
+  onSubmit: (booking: Omit<Booking, "id" | "totalPrice">) => void;
   onClose: () => void;
   selectedDate: Date;
   settings: ShopSettings;
-  getAvailableBikes: (date: Date, startTime: string, endTime: string) => number;
+  getAvailableBikes: (date: Date, startTime: string, endTime: string, category: BookingCategory) => BikeDetails[];
 }
 
 export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvailableBikes }: BookingFormProps) => {
@@ -23,13 +26,61 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
     customerName: "",
     phone: "",
     email: "",
-    bikeCount: 1,
     startTime: "09:00",
     endTime: "18:00",
+    category: "hourly" as BookingCategory,
+    needsGuide: false,
     status: "confirmed" as const
   });
 
+  const [selectedBikes, setSelectedBikes] = useState<BikeDetails[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
+
+  const calculateEstimatedPrice = () => {
+    if (selectedBikes.length === 0) return 0;
+    
+    const totalBikes = selectedBikes.reduce((sum, bike) => sum + bike.count, 0);
+    let basePrice = 0;
+    
+    if (formData.category === "full-day") {
+      basePrice = settings.pricing.fullDay * totalBikes;
+    } else if (formData.category === "half-day") {
+      basePrice = settings.pricing.halfDay * totalBikes;
+    } else {
+      const startHour = parseInt(formData.startTime.split(':')[0]);
+      const endHour = parseInt(formData.endTime.split(':')[0]);
+      const hours = endHour - startHour;
+      basePrice = settings.pricing.hourly * hours * totalBikes;
+    }
+    
+    const guidePrice = formData.needsGuide ? settings.pricing.guideHourly * (
+      formData.category === "full-day" ? 8 : 
+      formData.category === "half-day" ? 4 : 
+      parseInt(formData.endTime.split(':')[0]) - parseInt(formData.startTime.split(':')[0])
+    ) : 0;
+    
+    return basePrice + guidePrice;
+  };
+
+  useEffect(() => {
+    setEstimatedPrice(calculateEstimatedPrice());
+  }, [selectedBikes, formData.category, formData.needsGuide, formData.startTime, formData.endTime]);
+
+  useEffect(() => {
+    if (formData.category === "full-day") {
+      setFormData(prev => ({ ...prev, startTime: settings.openingTime, endTime: settings.closingTime }));
+    } else if (formData.category === "half-day") {
+      const openHour = parseInt(settings.openingTime.split(':')[0]);
+      const closeHour = parseInt(settings.closingTime.split(':')[0]);
+      const halfPoint = Math.floor((openHour + closeHour) / 2);
+      setFormData(prev => ({ 
+        ...prev, 
+        startTime: settings.openingTime, 
+        endTime: `${halfPoint.toString().padStart(2, '0')}:00` 
+      }));
+    }
+  }, [formData.category, settings.openingTime, settings.closingTime]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -42,17 +93,12 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
       newErrors.phone = "Numero di telefono obbligatorio";
     }
 
-    if (formData.bikeCount < 1) {
-      newErrors.bikeCount = "Selezionare almeno 1 bici";
+    if (selectedBikes.length === 0) {
+      newErrors.bikes = "Selezionare almeno 1 bici";
     }
 
-    if (formData.startTime >= formData.endTime) {
+    if (formData.category === "hourly" && formData.startTime >= formData.endTime) {
       newErrors.time = "L'orario di fine deve essere dopo quello di inizio";
-    }
-
-    const availableBikes = getAvailableBikes(selectedDate, formData.startTime, formData.endTime);
-    if (formData.bikeCount > availableBikes) {
-      newErrors.bikeCount = `Solo ${availableBikes} bici disponibili in questo orario`;
     }
 
     setErrors(newErrors);
@@ -66,6 +112,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
 
     onSubmit({
       ...formData,
+      bikeDetails: selectedBikes,
       date: selectedDate,
       email: formData.email || undefined
     });
@@ -84,7 +131,8 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
     return options;
   };
 
-  const availableBikes = getAvailableBikes(selectedDate, formData.startTime, formData.endTime);
+  const availableBikes = getAvailableBikes(selectedDate, formData.startTime, formData.endTime, formData.category);
+  const totalAvailable = availableBikes.reduce((sum, bike) => sum + bike.count, 0);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -110,7 +158,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                   </span>
                 </div>
                 <Badge className="bg-available text-white">
-                  {availableBikes} bici disponibili
+                  {totalAvailable} bici disponibili
                 </Badge>
               </div>
             </CardContent>
@@ -167,65 +215,112 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
             />
           </div>
 
-          {/* Booking Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="bikeCount" className="flex items-center gap-2">
-                <BikeIcon className="w-4 h-4" />
-                Numero Bici *
-              </Label>
-              <Input
-                id="bikeCount"
-                type="number"
-                min="1"
-                max={availableBikes}
-                value={formData.bikeCount}
-                onChange={(e) => setFormData({ ...formData, bikeCount: parseInt(e.target.value) || 1 })}
-                className={errors.bikeCount ? "border-destructive" : ""}
-              />
-              {errors.bikeCount && (
-                <p className="text-sm text-destructive">{errors.bikeCount}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="startTime" className="flex items-center gap-2">
-                <ClockIcon className="w-4 h-4" />
-                Orario Inizio *
-              </Label>
-              <select
-                id="startTime"
-                value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {generateTimeOptions().slice(0, -1).map((time) => (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="endTime" className="flex items-center gap-2">
-                <ClockIcon className="w-4 h-4" />
-                Orario Fine *
-              </Label>
-              <select
-                id="endTime"
-                value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {generateTimeOptions().slice(1).map((time) => (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Booking Category */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <ClockIcon className="w-4 h-4" />
+              Tipologia Prenotazione *
+            </Label>
+            <Select value={formData.category} onValueChange={(value: BookingCategory) => setFormData({ ...formData, category: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hourly">Oraria</SelectItem>
+                <SelectItem value="half-day">Mezza Giornata</SelectItem>
+                <SelectItem value="full-day">Giornata Intera</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Guide Checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="needsGuide"
+              checked={formData.needsGuide}
+              onCheckedChange={(checked) => setFormData({ ...formData, needsGuide: !!checked })}
+            />
+            <Label htmlFor="needsGuide" className="flex items-center gap-2 cursor-pointer">
+              <UsersIcon className="w-4 h-4" />
+              Richiesta Accompagnatore/Guida
+            </Label>
+          </div>
+
+          {/* Time Selection */}
+          {formData.category === "hourly" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <div className="space-y-2">
+                <Label htmlFor="startTime" className="flex items-center gap-2">
+                  <ClockIcon className="w-4 h-4" />
+                  Orario Inizio *
+                </Label>
+                <select
+                  id="startTime"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {generateTimeOptions().slice(0, -1).map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endTime" className="flex items-center gap-2">
+                  <ClockIcon className="w-4 h-4" />
+                  Orario Fine *
+                </Label>
+                <select
+                  id="endTime"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {generateTimeOptions().slice(1).map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Bike Selection */}
+          <BikeSelector
+            availableBikes={availableBikes}
+            selectedBikes={selectedBikes}
+            onSelectionChange={setSelectedBikes}
+          />
+          {errors.bikes && (
+            <p className="text-sm text-destructive">{errors.bikes}</p>
+          )}
+
+          {/* Price Estimation */}
+          {estimatedPrice > 0 && (
+            <Card className="bg-gradient-to-r from-electric-green/5 to-electric-green-light/5 border-electric-green/20">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <EuroIcon className="w-4 h-4 text-electric-green" />
+                    <span className="font-medium">Totale Stimato</span>
+                  </div>
+                  <Badge className="bg-electric-green text-white text-lg px-3 py-1">
+                    €{estimatedPrice.toFixed(2)}
+                  </Badge>
+                </div>
+                {formData.needsGuide && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Include servizio accompagnatore/guida
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {errors.time && (
             <p className="text-sm text-destructive">{errors.time}</p>

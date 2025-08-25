@@ -10,34 +10,70 @@ import { BookingForm } from "./BookingForm";
 import { SettingsPanel } from "./SettingsPanel";
 import { BookingList } from "./BookingList";
 
+export type BikeType = "bambino" | "adulto";
+export type BikeSize = "S" | "M" | "L" | "XL";
+export type BikeSuspension = "full-suspension" | "front-only";
+
+export type BikeDetails = {
+  type: BikeType;
+  size: BikeSize;
+  suspension: BikeSuspension;
+  count: number;
+};
+
+export type BookingCategory = "hourly" | "half-day" | "full-day";
+
 export type Booking = {
   id: string;
   customerName: string;
   phone: string;
   email?: string;
-  bikeCount: number;
+  bikeDetails: BikeDetails[];
   startTime: string;
   endTime: string;
   date: Date;
+  category: BookingCategory;
+  needsGuide: boolean;
   status: "confirmed" | "pending" | "cancelled";
+  totalPrice: number;
+};
+
+export type Pricing = {
+  hourly: number;
+  halfDay: number;
+  fullDay: number;
+  guideHourly: number;
 };
 
 export type ShopSettings = {
-  totalBikes: number;
+  totalBikes: BikeDetails[];
   openingTime: string;
   closingTime: string;
   shopName: string;
   phone: string;
   email: string;
+  pricing: Pricing;
 };
 
 const defaultSettings: ShopSettings = {
-  totalBikes: 10,
+  totalBikes: [
+    { type: "adulto", size: "S", suspension: "front-only", count: 2 },
+    { type: "adulto", size: "M", suspension: "front-only", count: 3 },
+    { type: "adulto", size: "L", suspension: "front-only", count: 2 },
+    { type: "adulto", size: "M", suspension: "full-suspension", count: 2 },
+    { type: "bambino", size: "S", suspension: "front-only", count: 1 },
+  ],
   openingTime: "09:00",
   closingTime: "19:00",
   shopName: "EcoRide E-Bike",
   phone: "+39 123 456 7890",
-  email: "info@ecoride.it"
+  email: "info@ecoride.it",
+  pricing: {
+    hourly: 15,
+    halfDay: 45,
+    fullDay: 70,
+    guideHourly: 25
+  }
 };
 
 export const Dashboard = () => {
@@ -48,27 +84,66 @@ export const Dashboard = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
 
-  const addBooking = (booking: Omit<Booking, "id">) => {
+  const addBooking = (booking: Omit<Booking, "id" | "totalPrice">) => {
+    const totalPrice = calculatePrice(booking.bikeDetails, booking.category, booking.needsGuide, booking.startTime, booking.endTime);
     const newBooking = {
       ...booking,
       id: Date.now().toString(),
+      totalPrice,
     };
     setBookings([...bookings, newBooking]);
     setShowBookingForm(false);
   };
 
-  const getAvailableBikes = (date: Date, startTime: string, endTime: string) => {
+  const getAvailableBikes = (date: Date, startTime: string, endTime: string, category: BookingCategory): BikeDetails[] => {
     const dayBookings = bookings.filter(
       booking => 
         format(booking.date, "yyyy-MM-dd") === format(date, "yyyy-MM-dd") &&
         booking.status === "confirmed" &&
-        ((startTime >= booking.startTime && startTime < booking.endTime) ||
-         (endTime > booking.startTime && endTime <= booking.endTime) ||
-         (startTime <= booking.startTime && endTime >= booking.endTime))
+        (category === "full-day" || booking.category === "full-day" ||
+         ((startTime >= booking.startTime && startTime < booking.endTime) ||
+          (endTime > booking.startTime && endTime <= booking.endTime) ||
+          (startTime <= booking.startTime && endTime >= booking.endTime)))
     );
     
-    const bookedBikes = dayBookings.reduce((sum, booking) => sum + booking.bikeCount, 0);
-    return settings.totalBikes - bookedBikes;
+    // Calculate booked bikes by type
+    const bookedByType: Record<string, number> = {};
+    dayBookings.forEach(booking => {
+      booking.bikeDetails.forEach(bike => {
+        const key = `${bike.type}-${bike.size}-${bike.suspension}`;
+        bookedByType[key] = (bookedByType[key] || 0) + bike.count;
+      });
+    });
+    
+    // Calculate available bikes
+    return settings.totalBikes.map(bike => {
+      const key = `${bike.type}-${bike.size}-${bike.suspension}`;
+      const booked = bookedByType[key] || 0;
+      return {
+        ...bike,
+        count: Math.max(0, bike.count - booked)
+      };
+    }).filter(bike => bike.count > 0);
+  };
+
+  const calculatePrice = (bikeDetails: BikeDetails[], category: BookingCategory, needsGuide: boolean, startTime: string, endTime: string): number => {
+    const totalBikes = bikeDetails.reduce((sum, bike) => sum + bike.count, 0);
+    let basePrice = 0;
+    
+    if (category === "full-day") {
+      basePrice = settings.pricing.fullDay * totalBikes;
+    } else if (category === "half-day") {
+      basePrice = settings.pricing.halfDay * totalBikes;
+    } else {
+      const startHour = parseInt(startTime.split(':')[0]);
+      const endHour = parseInt(endTime.split(':')[0]);
+      const hours = endHour - startHour;
+      basePrice = settings.pricing.hourly * hours * totalBikes;
+    }
+    
+    const guidePrice = needsGuide ? settings.pricing.guideHourly * (category === "full-day" ? 8 : category === "half-day" ? 4 : parseInt(endTime.split(':')[0]) - parseInt(startTime.split(':')[0])) : 0;
+    
+    return basePrice + guidePrice;
   };
 
   return (
@@ -135,12 +210,12 @@ export const Dashboard = () => {
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Bici Totali</span>
-                    <Badge variant="secondary">{settings.totalBikes}</Badge>
+                    <Badge variant="secondary">{settings.totalBikes.reduce((sum, bike) => sum + bike.count, 0)}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Disponibili Oggi</span>
                     <Badge className="bg-available text-white">
-                      {getAvailableBikes(selectedDate, "09:00", "19:00")}
+                      {getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").reduce((sum, bike) => sum + bike.count, 0)}
                     </Badge>
                   </div>
                 </div>
@@ -184,6 +259,7 @@ export const Dashboard = () => {
                     selectedDate={selectedDate}
                     viewMode={viewMode}
                     settings={settings}
+                    onUpdateBooking={(updatedBookings) => setBookings(updatedBookings)}
                   />
                 </CardContent>
               </Card>

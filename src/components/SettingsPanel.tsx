@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { SettingsIcon, BikeIcon, ClockIcon, StoreIcon, PhoneIcon, MailIcon, SaveIcon } from "lucide-react";
-import type { ShopSettings } from "./Dashboard";
+import type { ShopSettings, BikeDetails, BikeType, BikeSize, BikeSuspension } from "./Dashboard";
+import { PlusIcon, MinusIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SettingsPanelProps {
   settings: ShopSettings;
@@ -33,8 +35,8 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
       newErrors.email = "Email obbligatoria";
     }
 
-    if (formData.totalBikes < 1) {
-      newErrors.totalBikes = "Deve esserci almeno 1 bici";
+    if (formData.totalBikes.length < 1) {
+      newErrors.totalBikes = "Deve esserci almeno 1 tipologia di bici";
     }
 
     if (formData.openingTime >= formData.closingTime) {
@@ -157,26 +159,140 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalBikes" className="flex items-center gap-2">
-                  <BikeIcon className="w-4 h-4" />
-                  Numero Totale E-Bike *
-                </Label>
-                <Input
-                  id="totalBikes"
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={formData.totalBikes}
-                  onChange={(e) => setFormData({ ...formData, totalBikes: parseInt(e.target.value) || 1 })}
-                  className={errors.totalBikes ? "border-destructive" : ""}
-                />
-                {errors.totalBikes && (
-                  <p className="text-sm text-destructive">{errors.totalBikes}</p>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  Numero di e-bike disponibili per il noleggio
-                </p>
+              {/* Bike Inventory */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Inventario Bici</Label>
+                
+                {formData.totalBikes.map((bike, index) => (
+                  <Card key={index} className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div className="space-y-2">
+                        <Label>Tipo</Label>
+                        <Select
+                          value={bike.type}
+                          onValueChange={(value: BikeType) => {
+                            const updated = [...formData.totalBikes];
+                            updated[index] = { ...bike, type: value };
+                            setFormData({ ...formData, totalBikes: updated });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="adulto">Adulto</SelectItem>
+                            <SelectItem value="bambino">Bambino</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Taglia</Label>
+                        <Select
+                          value={bike.size}
+                          onValueChange={(value: BikeSize) => {
+                            const updated = [...formData.totalBikes];
+                            updated[index] = { ...bike, size: value };
+                            setFormData({ ...formData, totalBikes: updated });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="S">S</SelectItem>
+                            <SelectItem value="M">M</SelectItem>
+                            <SelectItem value="L">L</SelectItem>
+                            <SelectItem value="XL">XL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Sospensioni</Label>
+                        <Select
+                          value={bike.suspension}
+                          onValueChange={(value: BikeSuspension) => {
+                            const updated = [...formData.totalBikes];
+                            updated[index] = { ...bike, suspension: value };
+                            setFormData({ ...formData, totalBikes: updated });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="front-only">Solo Davanti</SelectItem>
+                            <SelectItem value="full-suspension">Full Suspension</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Quantità</Label>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const updated = [...formData.totalBikes];
+                              updated[index] = { ...bike, count: Math.max(0, bike.count - 1) };
+                              setFormData({ ...formData, totalBikes: updated });
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <MinusIcon className="w-4 h-4" />
+                          </Button>
+                          <span className="w-12 text-center">{bike.count}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const updated = [...formData.totalBikes];
+                              updated[index] = { ...bike, count: bike.count + 1 };
+                              setFormData({ ...formData, totalBikes: updated });
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <PlusIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              const updated = formData.totalBikes.filter((_, i) => i !== index);
+                              setFormData({ ...formData, totalBikes: updated });
+                            }}
+                            className="ml-2"
+                          >
+                            Rimuovi
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const newBike: BikeDetails = {
+                      type: "adulto",
+                      size: "M",
+                      suspension: "front-only",
+                      count: 1
+                    };
+                    setFormData({ ...formData, totalBikes: [...formData.totalBikes, newBike] });
+                  }}
+                  className="w-full"
+                >
+                  <PlusIcon className="w-4 h-4 mr-2" />
+                  Aggiungi Tipologia Bici
+                </Button>
               </div>
 
               <Separator />
@@ -228,6 +344,75 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
               <p className="text-sm text-muted-foreground">
                 Gli orari definiscono quando è possibile effettuare prenotazioni
               </p>
+
+              {/* Pricing */}
+              <Separator />
+              
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Configurazione Tariffe (€)</Label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="hourlyRate">Tariffa Oraria</Label>
+                    <Input
+                      id="hourlyRate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricing.hourly}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        pricing: { ...formData.pricing, hourly: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="halfDayRate">Tariffa Mezza Giornata</Label>
+                    <Input
+                      id="halfDayRate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricing.halfDay}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        pricing: { ...formData.pricing, halfDay: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="fullDayRate">Tariffa Giornata Intera</Label>
+                    <Input
+                      id="fullDayRate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricing.fullDay}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        pricing: { ...formData.pricing, fullDay: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="guideRate">Tariffa Guida (per ora)</Label>
+                    <Input
+                      id="guideRate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricing.guideHourly}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        pricing: { ...formData.pricing, guideHourly: parseFloat(e.target.value) || 0 }
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

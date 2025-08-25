@@ -5,16 +5,34 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, TrashIcon, EditIcon } from "lucide-react";
-import type { Booking, ShopSettings } from "./Dashboard";
+import type { Booking, ShopSettings, BikeDetails } from "./Dashboard";
 
 interface BookingListProps {
   bookings: Booking[];
   selectedDate: Date;
   viewMode: "day" | "week" | "month";
   settings: ShopSettings;
+  onUpdateBooking: (bookings: Booking[]) => void;
 }
 
-export const BookingList = ({ bookings, selectedDate, viewMode, settings }: BookingListProps) => {
+export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpdateBooking }: BookingListProps) => {
+  
+  const getBikeDetailsText = (bikeDetails: BikeDetails[]): string => {
+    return bikeDetails.map(bike => {
+      const type = bike.type === "bambino" ? "Bambino" : "Adulto";
+      const suspension = bike.suspension === "full-suspension" ? "Full-Sus" : "Front";
+      return `${bike.count}x ${type} ${bike.size} (${suspension})`;
+    }).join(", ");
+  };
+
+  const getCategoryText = (category: string): string => {
+    switch (category) {
+      case "hourly": return "Oraria";
+      case "half-day": return "Mezza Giornata";
+      case "full-day": return "Giornata Intera";
+      default: return category;
+    }
+  };
   const getFilteredBookings = () => {
     switch (viewMode) {
       case "day":
@@ -128,7 +146,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings }: Book
                     </div>
                     <div className="flex items-center gap-2">
                       <BikeIcon className="w-4 h-4 text-muted-foreground" />
-                      <span>{booking.bikeCount} bici</span>
+                      <span>{getBikeDetailsText(booking.bikeDetails)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <PhoneIcon className="w-4 h-4 text-muted-foreground" />
@@ -194,7 +212,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings }: Book
                           <span className="text-sm text-muted-foreground">
                             {booking.startTime} - {booking.endTime}
                           </span>
-                          <Badge variant="outline">{booking.bikeCount} bici</Badge>
+                          <Badge variant="outline">{getBikeDetailsText(booking.bikeDetails)}</Badge>
                         </div>
                         <Badge className={getStatusColor(booking.status)}>
                           {getStatusText(booking.status)}
