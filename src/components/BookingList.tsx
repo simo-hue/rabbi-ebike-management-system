@@ -1,0 +1,276 @@
+import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays } from "date-fns";
+import { it } from "date-fns/locale";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, TrashIcon, EditIcon } from "lucide-react";
+import type { Booking, ShopSettings } from "./Dashboard";
+
+interface BookingListProps {
+  bookings: Booking[];
+  selectedDate: Date;
+  viewMode: "day" | "week" | "month";
+  settings: ShopSettings;
+}
+
+export const BookingList = ({ bookings, selectedDate, viewMode, settings }: BookingListProps) => {
+  const getFilteredBookings = () => {
+    switch (viewMode) {
+      case "day":
+        return bookings.filter(booking => isSameDay(booking.date, selectedDate));
+      
+      case "week":
+        const weekStart = startOfWeek(selectedDate, { locale: it });
+        const weekEnd = endOfWeek(selectedDate, { locale: it });
+        return bookings.filter(booking => 
+          booking.date >= weekStart && booking.date <= weekEnd
+        );
+      
+      case "month":
+        return bookings.filter(booking => 
+          booking.date.getMonth() === selectedDate.getMonth() &&
+          booking.date.getFullYear() === selectedDate.getFullYear()
+        );
+      
+      default:
+        return [];
+    }
+  };
+
+  const generateTimeSlots = () => {
+    const slots = [];
+    const [openHour] = settings.openingTime.split(':').map(Number);
+    const [closeHour] = settings.closingTime.split(':').map(Number);
+    
+    for (let hour = openHour; hour <= closeHour; hour++) {
+      slots.push(`${hour.toString().padStart(2, '0')}:00`);
+      if (hour < closeHour) {
+        slots.push(`${hour.toString().padStart(2, '0')}:30`);
+      }
+    }
+    return slots;
+  };
+
+  const getBookingForTimeSlot = (date: Date, timeSlot: string) => {
+    return bookings.find(booking => 
+      isSameDay(booking.date, date) &&
+      booking.startTime <= timeSlot &&
+      booking.endTime > timeSlot &&
+      booking.status === "confirmed"
+    );
+  };
+
+  const getStatusColor = (status: Booking["status"]) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-available text-white";
+      case "pending":
+        return "bg-booked text-white";
+      case "cancelled":
+        return "bg-unavailable text-white";
+      default:
+        return "bg-secondary";
+    }
+  };
+
+  const getStatusText = (status: Booking["status"]) => {
+    switch (status) {
+      case "confirmed":
+        return "Confermata";
+      case "pending":
+        return "In Attesa";
+      case "cancelled":
+        return "Annullata";
+      default:
+        return status;
+    }
+  };
+
+  const renderDayView = () => {
+    const dayBookings = getFilteredBookings().sort((a, b) => 
+      a.startTime.localeCompare(b.startTime)
+    );
+
+    if (dayBookings.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <CalendarIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">Nessuna prenotazione per oggi</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Le prenotazioni appariranno qui quando verranno create
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {dayBookings.map((booking) => (
+          <Card key={booking.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-3 flex-1">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="w-4 h-4 text-electric-green" />
+                      <span className="font-medium">{booking.customerName}</span>
+                    </div>
+                    <Badge className={getStatusColor(booking.status)}>
+                      {getStatusText(booking.status)}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="w-4 h-4 text-muted-foreground" />
+                      <span>{booking.startTime} - {booking.endTime}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BikeIcon className="w-4 h-4 text-muted-foreground" />
+                      <span>{booking.bikeCount} bici</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <PhoneIcon className="w-4 h-4 text-muted-foreground" />
+                      <span>{booking.phone}</span>
+                    </div>
+                  </div>
+                  
+                  {booking.email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MailIcon className="w-4 h-4 text-muted-foreground" />
+                      <span>{booking.email}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 ml-4">
+                  <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                    <EditIcon className="w-3 h-3" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                    <TrashIcon className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+  const renderWeekView = () => {
+    const weekStart = startOfWeek(selectedDate, { locale: it });
+    const weekDays = eachDayOfInterval({
+      start: weekStart,
+      end: endOfWeek(selectedDate, { locale: it })
+    });
+
+    return (
+      <div className="space-y-4">
+        {weekDays.map((day) => {
+          const dayBookings = bookings.filter(booking => isSameDay(booking.date, day));
+          
+          return (
+            <Card key={day.toISOString()}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarIcon className="w-4 h-4 text-electric-green" />
+                  <h3 className="font-medium">
+                    {format(day, "EEEE, d MMMM", { locale: it })}
+                  </h3>
+                  <Badge variant="secondary">
+                    {dayBookings.length} prenotazioni
+                  </Badge>
+                </div>
+                
+                {dayBookings.length > 0 ? (
+                  <div className="space-y-2">
+                    {dayBookings.map((booking) => (
+                      <div key={booking.id} className="flex items-center justify-between py-2 px-3 bg-secondary/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium">{booking.customerName}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {booking.startTime} - {booking.endTime}
+                          </span>
+                          <Badge variant="outline">{booking.bikeCount} bici</Badge>
+                        </div>
+                        <Badge className={getStatusColor(booking.status)}>
+                          {getStatusText(booking.status)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nessuna prenotazione</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderMonthView = () => {
+    const monthBookings = getFilteredBookings();
+    const bookingsByDate = monthBookings.reduce((acc, booking) => {
+      const dateKey = format(booking.date, "yyyy-MM-dd");
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(booking);
+      return acc;
+    }, {} as Record<string, Booking[]>);
+
+    const monthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const monthEnd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+    const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+    return (
+      <div className="grid grid-cols-7 gap-2">
+        {/* Header giorni settimana */}
+        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((day) => (
+          <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+            {day}
+          </div>
+        ))}
+        
+        {/* Giorni del mese */}
+        {monthDays.map((day) => {
+          const dateKey = format(day, "yyyy-MM-dd");
+          const dayBookings = bookingsByDate[dateKey] || [];
+          
+          return (
+            <Card key={day.toISOString()} className="min-h-[100px] hover:shadow-md transition-shadow">
+              <CardContent className="p-2">
+                <div className="text-sm font-medium mb-1">
+                  {format(day, "d")}
+                </div>
+                <div className="space-y-1">
+                  {dayBookings.slice(0, 3).map((booking) => (
+                    <div key={booking.id} className="text-xs p-1 bg-electric-green/10 rounded truncate">
+                      {booking.customerName}
+                    </div>
+                  ))}
+                  {dayBookings.length > 3 && (
+                    <div className="text-xs text-muted-foreground">
+                      +{dayBookings.length - 3} altro/i
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {viewMode === "day" && renderDayView()}
+      {viewMode === "week" && renderWeekView()}
+      {viewMode === "month" && renderMonthView()}
+    </div>
+  );
+};

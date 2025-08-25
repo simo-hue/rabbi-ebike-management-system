@@ -52,6 +52,20 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// E-bike theme colors
+				'electric-green': {
+					DEFAULT: 'hsl(var(--electric-green))',
+					light: 'hsl(var(--electric-green-light))',
+					dark: 'hsl(var(--electric-green-dark))'
+				},
+				'professional-blue': {
+					DEFAULT: 'hsl(var(--professional-blue))',
+					dark: 'hsl(var(--professional-blue-dark))'
+				},
+				// Status colors
+				available: 'hsl(var(--available))',
+				booked: 'hsl(var(--booked))',
+				unavailable: 'hsl(var(--unavailable))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

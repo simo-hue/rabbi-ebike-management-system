@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 98%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -17,8 +17,8 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 158 64% 52%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -26,15 +26,38 @@ All colors MUST be HSL.
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 158 64% 52%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 158 64% 52%;
+
+    /* E-bike Theme Colors */
+    --electric-green: 158 64% 52%;
+    --electric-green-light: 158 64% 62%;
+    --electric-green-dark: 158 64% 42%;
+    --professional-blue: 214 95% 93%;
+    --professional-blue-dark: 217 91% 60%;
+    
+    /* Status Colors */
+    --available: 158 64% 52%;
+    --booked: 25 95% 53%;
+    --unavailable: 0 0% 64%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--electric-green)), hsl(var(--electric-green-light)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--electric-green)), hsl(var(--professional-blue-dark)));
+    
+    /* Shadows */
+    --shadow-card: 0 10px 30px -10px hsl(var(--electric-green) / 0.1);
+    --shadow-button: 0 4px 14px 0 hsl(var(--electric-green) / 0.25);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --radius: 0.5rem;
 
