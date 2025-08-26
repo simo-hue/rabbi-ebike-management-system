@@ -13,6 +13,9 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time for proper comparison
+  
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -50,6 +53,16 @@ function Calendar({
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
         ...classNames,
+      }}
+      modifiers={{
+        past: (date) => {
+          const compareDate = new Date(date);
+          compareDate.setHours(0, 0, 0, 0);
+          return compareDate < today;
+        },
+      }}
+      modifiersClassNames={{
+        past: "opacity-40 text-muted-foreground/60",
       }}
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,

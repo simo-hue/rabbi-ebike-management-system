@@ -1,14 +1,16 @@
 import { useState } from "react";
+import { useTheme } from "next-themes";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { SettingsIcon, BikeIcon, ClockIcon, StoreIcon, PhoneIcon, MailIcon, SaveIcon } from "lucide-react";
-import type { ShopSettings, BikeDetails, BikeType, BikeSize, BikeSuspension } from "./Dashboard";
-import { PlusIcon, MinusIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PlusIcon, MinusIcon, SaveIcon, XIcon, MoonIcon, SunIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { ShopSettings, BikeDetails, BikeType, BikeSize, BikeSuspension } from "./Dashboard";
 
 interface SettingsPanelProps {
   settings: ShopSettings;
@@ -18,40 +20,9 @@ interface SettingsPanelProps {
 
 export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps) => {
   const [formData, setFormData] = useState<ShopSettings>(settings);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { theme, setTheme } = useTheme();
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.shopName.trim()) {
-      newErrors.shopName = "Nome negozio obbligatorio";
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Numero di telefono obbligatorio";
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email obbligatoria";
-    }
-
-    if (formData.totalBikes.length < 1) {
-      newErrors.totalBikes = "Deve esserci almeno 1 tipologia di bici";
-    }
-
-    if (formData.openingTime >= formData.closingTime) {
-      newErrors.time = "L'orario di chiusura deve essere dopo quello di apertura";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
+  const handleSave = () => {
     onSave(formData);
     onClose();
   };
@@ -70,372 +41,409 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
   };
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <div className="w-8 h-8 bg-gradient-to-r from-electric-green to-electric-green-light rounded-lg flex items-center justify-center">
-              <SettingsIcon className="w-4 h-4 text-white" />
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-lg shadow-lg w-full max-w-5xl max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-electric-green to-electric-green-light rounded-lg">
+              <SaveIcon className="w-6 h-6 text-white" />
             </div>
-            Impostazioni Negozio
-          </DialogTitle>
-        </DialogHeader>
+            <div>
+              <h2 className="text-2xl font-bold">Impostazioni</h2>
+              <p className="text-muted-foreground">Configura il tuo negozio</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={onClose}>
+            <XIcon className="w-4 h-4 mr-2" />
+            Chiudi
+          </Button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Shop Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <StoreIcon className="w-5 h-5 text-electric-green" />
-                Informazioni Negozio
-              </CardTitle>
-              <CardDescription>
-                Configura i dati principali del tuo negozio
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="shopName">Nome Negozio *</Label>
-                <Input
-                  id="shopName"
-                  value={formData.shopName}
-                  onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
-                  placeholder="EcoRide E-Bike"
-                  className={errors.shopName ? "border-destructive" : ""}
-                />
-                {errors.shopName && (
-                  <p className="text-sm text-destructive">{errors.shopName}</p>
-                )}
-              </div>
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          <Tabs defaultValue="general" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="general">Generale</TabsTrigger>
+              <TabsTrigger value="bikes">Biciclette</TabsTrigger>
+              <TabsTrigger value="pricing">Prezzi</TabsTrigger>
+              <TabsTrigger value="appearance">Aspetto</TabsTrigger>
+            </TabsList>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="flex items-center gap-2">
-                    <PhoneIcon className="w-4 h-4" />
-                    Telefono *
-                  </Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+39 123 456 7890"
-                    className={errors.phone ? "border-destructive" : ""}
-                  />
-                  {errors.phone && (
-                    <p className="text-sm text-destructive">{errors.phone}</p>
-                  )}
-                </div>
+            <TabsContent value="general" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informazioni Negozio</CardTitle>
+                  <CardDescription>Dati di base del tuo negozio</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="shopName">Nome Negozio</Label>
+                    <Input
+                      id="shopName"
+                      value={formData.shopName}
+                      onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
+                      placeholder="EcoRide E-Bike"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="flex items-center gap-2">
-                    <MailIcon className="w-4 h-4" />
-                    Email *
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="info@ecoride.it"
-                    className={errors.email ? "border-destructive" : ""}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Telefono</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="+39 123 456 7890"
+                      />
+                    </div>
 
-          {/* Business Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <BikeIcon className="w-5 h-5 text-electric-green" />
-                Configurazione Operativa
-              </CardTitle>
-              <CardDescription>
-                Imposta i parametri di funzionamento del negozio
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Bike Inventory */}
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">Inventario Bici</Label>
-                
-                {formData.totalBikes.map((bike, index) => (
-                  <Card key={index} className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                      <div className="space-y-2">
-                        <Label>Tipo</Label>
-                        <Select
-                          value={bike.type}
-                          onValueChange={(value: BikeType) => {
-                            const updated = [...formData.totalBikes];
-                            updated[index] = { ...bike, type: value };
-                            setFormData({ ...formData, totalBikes: updated });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="adulto">Adulto</SelectItem>
-                            <SelectItem value="bambino">Bambino</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Taglia</Label>
-                        <Select
-                          value={bike.size}
-                          onValueChange={(value: BikeSize) => {
-                            const updated = [...formData.totalBikes];
-                            updated[index] = { ...bike, size: value };
-                            setFormData({ ...formData, totalBikes: updated });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="S">S</SelectItem>
-                            <SelectItem value="M">M</SelectItem>
-                            <SelectItem value="L">L</SelectItem>
-                            <SelectItem value="XL">XL</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Sospensioni</Label>
-                        <Select
-                          value={bike.suspension}
-                          onValueChange={(value: BikeSuspension) => {
-                            const updated = [...formData.totalBikes];
-                            updated[index] = { ...bike, suspension: value };
-                            setFormData({ ...formData, totalBikes: updated });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="front-only">Solo Davanti</SelectItem>
-                            <SelectItem value="full-suspension">Full Suspension</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Quantità</Label>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="info@ecoride.it"
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="openingTime">Orario Apertura</Label>
+                      <Select value={formData.openingTime} onValueChange={(value) => setFormData({ ...formData, openingTime: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {generateTimeOptions().slice(0, -6).map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="closingTime">Orario Chiusura</Label>
+                      <Select value={formData.closingTime} onValueChange={(value) => setFormData({ ...formData, closingTime: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {generateTimeOptions().slice(6).map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="bikes" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Inventario Biciclette</CardTitle>
+                  <CardDescription>Gestisci le tipologie e quantità di bici disponibili</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {formData.totalBikes.map((bike, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div className="space-y-2">
+                          <Label>Tipo</Label>
+                          <Select
+                            value={bike.type}
+                            onValueChange={(value: BikeType) => {
                               const updated = [...formData.totalBikes];
-                              updated[index] = { ...bike, count: Math.max(0, bike.count - 1) };
+                              updated[index] = { ...bike, type: value };
                               setFormData({ ...formData, totalBikes: updated });
                             }}
-                            className="h-8 w-8 p-0"
                           >
-                            <MinusIcon className="w-4 h-4" />
-                          </Button>
-                          <span className="w-12 text-center">{bike.count}</span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="adulto">Adulto</SelectItem>
+                              <SelectItem value="bambino">Bambino</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Taglia</Label>
+                          <Select
+                            value={bike.size}
+                            onValueChange={(value: BikeSize) => {
                               const updated = [...formData.totalBikes];
-                              updated[index] = { ...bike, count: bike.count + 1 };
+                              updated[index] = { ...bike, size: value };
                               setFormData({ ...formData, totalBikes: updated });
                             }}
-                            className="h-8 w-8 p-0"
                           >
-                            <PlusIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              const updated = formData.totalBikes.filter((_, i) => i !== index);
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="S">S</SelectItem>
+                              <SelectItem value="M">M</SelectItem>
+                              <SelectItem value="L">L</SelectItem>
+                              <SelectItem value="XL">XL</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Sospensioni</Label>
+                          <Select
+                            value={bike.suspension}
+                            onValueChange={(value: BikeSuspension) => {
+                              const updated = [...formData.totalBikes];
+                              updated[index] = { ...bike, suspension: value };
                               setFormData({ ...formData, totalBikes: updated });
                             }}
-                            className="ml-2"
                           >
-                            Rimuovi
-                          </Button>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="front-only">Solo Davanti</SelectItem>
+                              <SelectItem value="full-suspension">Full Suspension</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Quantità</Label>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const updated = [...formData.totalBikes];
+                                updated[index] = { ...bike, count: Math.max(0, bike.count - 1) };
+                                setFormData({ ...formData, totalBikes: updated });
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <MinusIcon className="w-4 h-4" />
+                            </Button>
+                            <span className="w-12 text-center">{bike.count}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const updated = [...formData.totalBikes];
+                                updated[index] = { ...bike, count: bike.count + 1 };
+                                setFormData({ ...formData, totalBikes: updated });
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <PlusIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                const updated = formData.totalBikes.filter((_, i) => i !== index);
+                                setFormData({ ...formData, totalBikes: updated });
+                              }}
+                              className="ml-2"
+                            >
+                              Rimuovi
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const newBike: BikeDetails = {
+                        type: "adulto",
+                        size: "M",
+                        suspension: "front-only",
+                        count: 1
+                      };
+                      setFormData({ ...formData, totalBikes: [...formData.totalBikes, newBike] });
+                    }}
+                    className="w-full"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-2" />
+                    Aggiungi Tipologia Bici
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="pricing" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configurazione Tariffe</CardTitle>
+                  <CardDescription>Imposta i prezzi per i diversi tipi di noleggio</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="hourlyRate">Tariffa Oraria (€)</Label>
+                      <Input
+                        id="hourlyRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricing.hourly}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing: { ...formData.pricing, hourly: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="halfDayRate">Tariffa Mezza Giornata (€)</Label>
+                      <Input
+                        id="halfDayRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricing.halfDay}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing: { ...formData.pricing, halfDay: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="fullDayRate">Tariffa Giornata Intera (€)</Label>
+                      <Input
+                        id="fullDayRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricing.fullDay}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing: { ...formData.pricing, fullDay: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="guideRate">Tariffa Guida (€/ora)</Label>
+                      <Input
+                        id="guideRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricing.guideHourly}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing: { ...formData.pricing, guideHourly: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                    <h4 className="font-medium mb-2">Anteprima Prezzi</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>1 bici per 1 ora:</span>
+                        <span>€{formData.pricing.hourly}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>1 bici mezza giornata:</span>
+                        <span>€{formData.pricing.halfDay}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>1 bici giornata intera:</span>
+                        <span>€{formData.pricing.fullDay}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Guida per 1 ora:</span>
+                        <span>€{formData.pricing.guideHourly}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="appearance" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tema Applicazione</CardTitle>
+                  <CardDescription>Personalizza l'aspetto dell'interfaccia</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="dark-mode">Modalità Scura</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Attiva il tema scuro per ridurre l'affaticamento degli occhi
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <SunIcon className="h-4 w-4" />
+                      <Switch
+                        id="dark-mode"
+                        checked={theme === "dark"}
+                        onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                      />
+                      <MoonIcon className="h-4 w-4" />
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <Label>Anteprima Tema</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Chiaro</p>
+                        <div className="h-20 rounded-lg border-2 bg-white border-gray-200 p-3 cursor-pointer" onClick={() => setTheme("light")}>
+                          <div className="h-2 w-full bg-gray-200 rounded mb-2"></div>
+                          <div className="h-2 w-3/4 bg-gray-300 rounded"></div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Scuro</p>
+                        <div className="h-20 rounded-lg border-2 bg-gray-900 border-gray-700 p-3 cursor-pointer" onClick={() => setTheme("dark")}>
+                          <div className="h-2 w-full bg-gray-700 rounded mb-2"></div>
+                          <div className="h-2 w-3/4 bg-gray-600 rounded"></div>
                         </div>
                       </div>
                     </div>
-                  </Card>
-                ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    const newBike: BikeDetails = {
-                      type: "adulto",
-                      size: "M",
-                      suspension: "front-only",
-                      count: 1
-                    };
-                    setFormData({ ...formData, totalBikes: [...formData.totalBikes, newBike] });
-                  }}
-                  className="w-full"
-                >
-                  <PlusIcon className="w-4 h-4 mr-2" />
-                  Aggiungi Tipologia Bici
-                </Button>
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="openingTime" className="flex items-center gap-2">
-                    <ClockIcon className="w-4 h-4" />
-                    Orario Apertura *
-                  </Label>
-                  <select
-                    id="openingTime"
-                    value={formData.openingTime}
-                    onChange={(e) => setFormData({ ...formData, openingTime: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {generateTimeOptions().slice(0, -6).map((time) => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="closingTime" className="flex items-center gap-2">
-                    <ClockIcon className="w-4 h-4" />
-                    Orario Chiusura *
-                  </Label>
-                  <select
-                    id="closingTime"
-                    value={formData.closingTime}
-                    onChange={(e) => setFormData({ ...formData, closingTime: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {generateTimeOptions().slice(6).map((time) => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {errors.time && (
-                <p className="text-sm text-destructive">{errors.time}</p>
-              )}
-
-              <p className="text-sm text-muted-foreground">
-                Gli orari definiscono quando è possibile effettuare prenotazioni
-              </p>
-
-              {/* Pricing */}
-              <Separator />
-              
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">Configurazione Tariffe (€)</Label>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="hourlyRate">Tariffa Oraria</Label>
-                    <Input
-                      id="hourlyRate"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricing.hourly}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        pricing: { ...formData.pricing, hourly: parseFloat(e.target.value) || 0 }
-                      })}
-                    />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="halfDayRate">Tariffa Mezza Giornata</Label>
-                    <Input
-                      id="halfDayRate"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricing.halfDay}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        pricing: { ...formData.pricing, halfDay: parseFloat(e.target.value) || 0 }
-                      })}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="fullDayRate">Tariffa Giornata Intera</Label>
-                    <Input
-                      id="fullDayRate"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricing.fullDay}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        pricing: { ...formData.pricing, fullDay: parseFloat(e.target.value) || 0 }
-                      })}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="guideRate">Tariffa Guida (per ora)</Label>
-                    <Input
-                      id="guideRate"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricing.guideHourly}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        pricing: { ...formData.pricing, guideHourly: parseFloat(e.target.value) || 0 }
-                      })}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+            <Button variant="outline" onClick={onClose}>
               Annulla
             </Button>
-            <Button
-              type="submit"
-              className="flex-1 bg-gradient-to-r from-electric-green to-electric-green-light hover:from-electric-green-dark hover:to-electric-green gap-2"
-            >
-              <SaveIcon className="w-4 h-4" />
+            <Button onClick={handleSave} className="bg-gradient-to-r from-electric-green to-electric-green-light hover:from-electric-green-dark hover:to-electric-green">
+              <SaveIcon className="w-4 h-4 mr-2" />
               Salva Impostazioni
             </Button>
           </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   );
 };
