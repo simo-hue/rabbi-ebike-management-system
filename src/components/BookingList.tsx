@@ -105,6 +105,11 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
     }
   };
 
+  const handleDeleteBooking = (bookingId: string) => {
+    const updatedBookings = bookings.filter(booking => booking.id !== bookingId);
+    onUpdateBooking(updatedBookings);
+  };
+
   const renderDayView = () => {
     const dayBookings = getFilteredBookings().sort((a, b) => 
       a.startTime.localeCompare(b.startTime)
@@ -137,6 +142,9 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                     <Badge className={getStatusColor(booking.status)}>
                       {getStatusText(booking.status)}
                     </Badge>
+                    <Badge variant="outline" className="bg-primary/10">
+                      {getCategoryText(booking.category)}
+                    </Badge>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
@@ -154,19 +162,31 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                     </div>
                   </div>
                   
-                  {booking.email && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <MailIcon className="w-4 h-4 text-muted-foreground" />
-                      <span>{booking.email}</span>
+                  <div className="flex items-center justify-between">
+                    {booking.email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MailIcon className="w-4 h-4 text-muted-foreground" />
+                        <span>{booking.email}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <span className="text-muted-foreground">Totale:</span>
+                      <span className="text-primary">€{booking.totalPrice}</span>
+                      {booking.needsGuide && <Badge variant="secondary" className="text-xs">Con Guida</Badge>}
                     </div>
-                  )}
+                  </div>
                 </div>
                 
                 <div className="flex gap-2 ml-4">
                   <Button size="sm" variant="outline" className="h-8 w-8 p-0">
                     <EditIcon className="w-3 h-3" />
                   </Button>
-                  <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleDeleteBooking(booking.id)}
+                  >
                     <TrashIcon className="w-3 h-3" />
                   </Button>
                 </div>

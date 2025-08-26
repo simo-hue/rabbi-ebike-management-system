@@ -3,12 +3,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, SettingsIcon, PlusIcon, BikeIcon } from "lucide-react";
+import { CalendarIcon, SettingsIcon, PlusIcon, BikeIcon, BarChart3Icon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { BookingForm } from "./BookingForm";
 import { SettingsPanel } from "./SettingsPanel";
 import { BookingList } from "./BookingList";
+import { Statistics } from "./Statistics";
 
 export type BikeType = "bambino" | "adulto";
 export type BikeSize = "S" | "M" | "L" | "XL";
@@ -81,6 +82,7 @@ export const Dashboard = () => {
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
 
@@ -162,6 +164,15 @@ export const Dashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStatistics(true)}
+                className="gap-2"
+              >
+                <BarChart3Icon className="w-4 h-4" />
+                Statistiche
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -284,6 +295,14 @@ export const Dashboard = () => {
           settings={settings}
           onSave={setSettings}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showStatistics && (
+        <Statistics
+          bookings={bookings}
+          settings={settings}
+          onClose={() => setShowStatistics(false)}
         />
       )}
     </div>
