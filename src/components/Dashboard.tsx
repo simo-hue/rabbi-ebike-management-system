@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,9 @@ import { BookingForm } from "./BookingForm";
 import { SettingsPanel } from "./SettingsPanel";
 import { BookingList } from "./BookingList";
 import { Statistics } from "./Statistics";
+import { apiService } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
+import { useServerStatus } from "@/hooks/useApi";
 
 export type BikeType = "bambino" | "adulto";
 export type BikeSize = "S" | "M" | "L" | "XL";
@@ -86,8 +89,42 @@ export const Dashboard = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { isOnline } = useServerStatus();
 
-  const addBooking = (booking: Omit<Booking, "id" | "totalPrice">) => {
+  // Load data from server on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      if (!isOnline) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const [settingsData, bookingsData] = await Promise.all([
+          apiService.getSettings(),
+          apiService.getBookings()
+        ]);
+        
+        setSettings(settingsData);
+        setBookings(bookingsData.map((b: any) => ({ ...b, date: new Date(b.date) })));
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        toast({
+          title: "Errore di caricamento",
+          description: "Impossibile caricare i dati dal server. Usando i dati di default.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [isOnline, toast]);
+
+  const addBooking = async (booking: Omit<Booking, "id" | "totalPrice">) => {
     const totalPrice = calculatePrice(booking.bikeDetails, booking.category, booking.needsGuide, booking.startTime, booking.endTime);
     
     if (editingBooking) {
@@ -97,6 +134,24 @@ export const Dashboard = () => {
         id: editingBooking.id,
         totalPrice,
       };
+
+      if (isOnline) {
+        try {
+          await apiService.updateBooking(editingBooking.id, updatedBooking);
+          toast({
+            title: "Prenotazione aggiornata",
+            description: "La prenotazione è stata modificata con successo."
+          });
+        } catch (error) {
+          toast({
+            title: "Errore",
+            description: "Impossibile aggiornare la prenotazione sul server.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
       setBookings(bookings.map(b => b.id === editingBooking.id ? updatedBooking : b));
       setEditingBooking(null);
     } else {
@@ -106,6 +161,24 @@ export const Dashboard = () => {
         id: Date.now().toString(),
         totalPrice,
       };
+
+      if (isOnline) {
+        try {
+          await apiService.createBooking(newBooking);
+          toast({
+            title: "Prenotazione creata",
+            description: "La prenotazione è stata salvata con successo."
+          });
+        } catch (error) {
+          toast({
+            title: "Errore",
+            description: "Impossibile salvare la prenotazione sul server.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
       setBookings([...bookings, newBooking]);
     }
     setShowBookingForm(false);
@@ -114,6 +187,46 @@ export const Dashboard = () => {
   const handleEditBooking = (booking: Booking) => {
     setEditingBooking(booking);
     setShowBookingForm(true);
+  };
+
+  const handleSaveSettings = async (newSettings: ShopSettings) => {
+    if (isOnline) {
+      try {
+        await apiService.updateSettings(newSettings);
+        toast({
+          title: "Impostazioni salvate",
+          description: "Le impostazioni sono state aggiornate con successo."
+        });
+      } catch (error) {
+        toast({
+          title: "Errore",
+          description: "Impossibile salvare le impostazioni sul server.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    setSettings(newSettings);
+  };
+
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (isOnline) {
+      try {
+        await apiService.deleteBooking(bookingId);
+        toast({
+          title: "Prenotazione eliminata",
+          description: "La prenotazione è stata rimossa con successo."
+        });
+      } catch (error) {
+        toast({
+          title: "Errore",
+          description: "Impossibile eliminare la prenotazione dal server.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    setBookings(bookings.filter(b => b.id !== bookingId));
   };
 
   const getAvailableBikes = (date: Date, startTime: string, endTime: string, category: BookingCategory): BikeDetails[] => {
@@ -289,7 +402,7 @@ export const Dashboard = () => {
                     selectedDate={selectedDate}
                     viewMode={viewMode}
                     settings={settings}
-                    onUpdateBooking={(updatedBookings) => setBookings(updatedBookings)}
+                    onUpdateBooking={handleDeleteBooking}
                     onEditBooking={handleEditBooking}
                   />
                 </CardContent>
@@ -317,7 +430,7 @@ export const Dashboard = () => {
       {showSettings && (
         <SettingsPanel
           settings={settings}
-          onSave={setSettings}
+          onSave={handleSaveSettings}
           onClose={() => setShowSettings(false)}
         />
       )}

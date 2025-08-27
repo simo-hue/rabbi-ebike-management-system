@@ -12,7 +12,7 @@ interface BookingListProps {
   selectedDate: Date;
   viewMode: "day" | "week" | "month";
   settings: ShopSettings;
-  onUpdateBooking: (bookings: Booking[]) => void;
+  onUpdateBooking: (bookingId: string) => void;
   onEditBooking: (booking: Booking) => void;
 }
 
@@ -107,8 +107,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
   };
 
   const handleDeleteBooking = (bookingId: string) => {
-    const updatedBookings = bookings.filter(booking => booking.id !== bookingId);
-    onUpdateBooking(updatedBookings);
+    onUpdateBooking(bookingId);
   };
 
   const renderDayView = () => {

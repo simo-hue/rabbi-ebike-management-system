@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusIcon, MinusIcon, SaveIcon, XIcon, MoonIcon, SunIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ShopSettings, BikeDetails, BikeType, BikeSize, BikeSuspension } from "./Dashboard";
+import { DevPanel } from "./DevPanel";
 
 interface SettingsPanelProps {
   settings: ShopSettings;
@@ -61,11 +62,12 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           <Tabs defaultValue="general" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="general">Generale</TabsTrigger>
               <TabsTrigger value="bikes">Biciclette</TabsTrigger>
               <TabsTrigger value="pricing">Prezzi</TabsTrigger>
               <TabsTrigger value="appearance">Aspetto</TabsTrigger>
+              <TabsTrigger value="developer">Dev</TabsTrigger>
             </TabsList>
 
             <TabsContent value="general" className="space-y-4">
@@ -430,6 +432,10 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="developer" className="space-y-4">
+              <DevPanel />
             </TabsContent>
           </Tabs>
 
