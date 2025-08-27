@@ -66,7 +66,7 @@ const defaultSettings: ShopSettings = {
   ],
   openingTime: "09:00",
   closingTime: "19:00",
-  shopName: "EcoRide E-Bike",
+  shopName: "Rabbi E-Bike Rent Go & Fun",
   phone: "+39 123 456 7890",
   email: "info@ecoride.it",
   pricing: {
@@ -85,16 +85,35 @@ export const Dashboard = () => {
   const [showStatistics, setShowStatistics] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
   const addBooking = (booking: Omit<Booking, "id" | "totalPrice">) => {
     const totalPrice = calculatePrice(booking.bikeDetails, booking.category, booking.needsGuide, booking.startTime, booking.endTime);
-    const newBooking = {
-      ...booking,
-      id: Date.now().toString(),
-      totalPrice,
-    };
-    setBookings([...bookings, newBooking]);
+    
+    if (editingBooking) {
+      // Update existing booking
+      const updatedBooking = {
+        ...booking,
+        id: editingBooking.id,
+        totalPrice,
+      };
+      setBookings(bookings.map(b => b.id === editingBooking.id ? updatedBooking : b));
+      setEditingBooking(null);
+    } else {
+      // Add new booking
+      const newBooking = {
+        ...booking,
+        id: Date.now().toString(),
+        totalPrice,
+      };
+      setBookings([...bookings, newBooking]);
+    }
     setShowBookingForm(false);
+  };
+
+  const handleEditBooking = (booking: Booking) => {
+    setEditingBooking(booking);
+    setShowBookingForm(true);
   };
 
   const getAvailableBikes = (date: Date, startTime: string, endTime: string, category: BookingCategory): BikeDetails[] => {
@@ -271,6 +290,7 @@ export const Dashboard = () => {
                     viewMode={viewMode}
                     settings={settings}
                     onUpdateBooking={(updatedBookings) => setBookings(updatedBookings)}
+                    onEditBooking={handleEditBooking}
                   />
                 </CardContent>
               </Card>
@@ -283,10 +303,14 @@ export const Dashboard = () => {
       {showBookingForm && (
         <BookingForm
           onSubmit={addBooking}
-          onClose={() => setShowBookingForm(false)}
+          onClose={() => {
+            setShowBookingForm(false);
+            setEditingBooking(null);
+          }}
           selectedDate={selectedDate}
           settings={settings}
           getAvailableBikes={getAvailableBikes}
+          editingBooking={editingBooking}
         />
       )}
 

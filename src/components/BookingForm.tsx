@@ -19,21 +19,22 @@ interface BookingFormProps {
   selectedDate: Date;
   settings: ShopSettings;
   getAvailableBikes: (date: Date, startTime: string, endTime: string, category: BookingCategory) => BikeDetails[];
+  editingBooking?: Booking | null;
 }
 
-export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvailableBikes }: BookingFormProps) => {
+export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvailableBikes, editingBooking }: BookingFormProps) => {
   const [formData, setFormData] = useState({
-    customerName: "",
-    phone: "",
-    email: "",
-    startTime: "09:00",
-    endTime: "18:00",
-    category: "hourly" as BookingCategory,
-    needsGuide: false,
-    status: "confirmed" as const
+    customerName: editingBooking?.customerName || "",
+    phone: editingBooking?.phone || "",
+    email: editingBooking?.email || "",
+    startTime: editingBooking?.startTime || "09:00",
+    endTime: editingBooking?.endTime || "18:00",
+    category: editingBooking?.category || ("hourly" as BookingCategory),
+    needsGuide: editingBooking?.needsGuide || false,
+    status: editingBooking?.status || ("confirmed" as const)
   });
 
-  const [selectedBikes, setSelectedBikes] = useState<BikeDetails[]>([]);
+  const [selectedBikes, setSelectedBikes] = useState<BikeDetails[]>(editingBooking?.bikeDetails || []);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [estimatedPrice, setEstimatedPrice] = useState(0);
 
@@ -142,7 +143,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
             <div className="w-8 h-8 bg-gradient-to-r from-electric-green to-electric-green-light rounded-lg flex items-center justify-center">
               <BikeIcon className="w-4 h-4 text-white" />
             </div>
-            Nuova Prenotazione
+            {editingBooking ? "Modifica Prenotazione" : "Nuova Prenotazione"}
           </DialogTitle>
         </DialogHeader>
 
@@ -340,7 +341,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
               type="submit"
               className="flex-1 bg-gradient-to-r from-electric-green to-electric-green-light hover:from-electric-green-dark hover:to-electric-green"
             >
-              Conferma Prenotazione
+              {editingBooking ? "Aggiorna Prenotazione" : "Conferma Prenotazione"}
             </Button>
           </div>
         </form>

@@ -13,9 +13,10 @@ interface BookingListProps {
   viewMode: "day" | "week" | "month";
   settings: ShopSettings;
   onUpdateBooking: (bookings: Booking[]) => void;
+  onEditBooking: (booking: Booking) => void;
 }
 
-export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpdateBooking }: BookingListProps) => {
+export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpdateBooking, onEditBooking }: BookingListProps) => {
   
   const getBikeDetailsText = (bikeDetails: BikeDetails[]): string => {
     return bikeDetails.map(bike => {
@@ -178,7 +179,12 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                 </div>
                 
                 <div className="flex gap-2 ml-4">
-                  <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-8 w-8 p-0"
+                    onClick={() => onEditBooking(booking)}
+                  >
                     <EditIcon className="w-3 h-3" />
                   </Button>
                   <Button 
