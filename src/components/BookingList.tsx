@@ -211,48 +211,83 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
       end: endOfWeek(selectedDate, { locale: it })
     });
 
+    const weekBookings = getFilteredBookings();
+    const bookingsByDate = weekBookings.reduce((acc, booking) => {
+      const dateKey = format(booking.date, "yyyy-MM-dd");
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(booking);
+      return acc;
+    }, {} as Record<string, Booking[]>);
+
     return (
       <div className="space-y-4">
-        {weekDays.map((day) => {
-          const dayBookings = bookings.filter(booking => isSameDay(booking.date, day));
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-3">
+          {/* Header giorni settimana */}
+          {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((day) => (
+            <div key={day} className="p-3 text-center text-sm font-medium text-muted-foreground border-b">
+              {day}
+            </div>
+          ))}
           
-          return (
-            <Card key={day.toISOString()}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <CalendarIcon className="w-4 h-4 text-electric-green" />
-                  <h3 className="font-medium">
-                    {format(day, "EEEE, d MMMM", { locale: it })}
-                  </h3>
-                  <Badge variant="secondary">
-                    {dayBookings.length} prenotazioni
-                  </Badge>
-                </div>
-                
-                {dayBookings.length > 0 ? (
-                  <div className="space-y-2">
-                    {dayBookings.map((booking) => (
-                      <div key={booking.id} className="flex items-center justify-between py-2 px-3 bg-secondary/30 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium">{booking.customerName}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {booking.startTime} - {booking.endTime}
-                          </span>
-                          <Badge variant="outline">{getBikeDetailsText(booking.bikeDetails)}</Badge>
-                        </div>
-                        <Badge className={getStatusColor(booking.status)}>
-                          {getStatusText(booking.status)}
+          {/* Giorni della settimana */}
+          {weekDays.map((day) => {
+            const dateKey = format(day, "yyyy-MM-dd");
+            const dayBookings = bookingsByDate[dateKey] || [];
+            const isToday = isSameDay(day, new Date());
+            
+            return (
+              <Card key={day.toISOString()} className={`min-h-[150px] hover:shadow-md transition-shadow ${isToday ? 'ring-2 ring-electric-green/30' : ''}`}>
+                <CardContent className="p-3">
+                  <div className={`text-sm font-medium mb-2 ${isToday ? 'text-electric-green font-bold' : ''}`}>
+                    <div className="flex items-center justify-between">
+                      <span>{format(day, "d")}</span>
+                      {dayBookings.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {dayBookings.length}
                         </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-normal mt-1">
+                      {format(day, "MMM", { locale: it })}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    {dayBookings.slice(0, 4).map((booking) => (
+                      <div 
+                        key={booking.id} 
+                        className={`text-xs p-2 rounded cursor-pointer transition-colors ${
+                          booking.status === 'confirmed' ? 'bg-available/10 hover:bg-available/20 border border-available/20' :
+                          booking.status === 'pending' ? 'bg-booked/10 hover:bg-booked/20 border border-booked/20' :
+                          'bg-unavailable/10 hover:bg-unavailable/20 border border-unavailable/20'
+                        }`}
+                        title={`${booking.customerName} - ${booking.startTime}-${booking.endTime} - ${getBikeDetailsText(booking.bikeDetails)}`}
+                      >
+                        <div className="font-medium truncate">{booking.customerName}</div>
+                        <div className="text-muted-foreground truncate">
+                          {booking.startTime}-{booking.endTime}
+                        </div>
+                        <div className="text-muted-foreground truncate">
+                          {getCategoryText(booking.category)}
+                        </div>
                       </div>
                     ))}
+                    {dayBookings.length > 4 && (
+                      <div className="text-xs text-muted-foreground text-center py-1">
+                        +{dayBookings.length - 4} altro/i
+                      </div>
+                    )}
+                    {dayBookings.length === 0 && (
+                      <div className="text-xs text-muted-foreground/50 text-center py-8">
+                        Nessuna prenotazione
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Nessuna prenotazione</p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     );
   };
