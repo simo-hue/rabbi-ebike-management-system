@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, TrashIcon, EditIcon } from "lucide-react";
+import { DailyCalendarView } from "./DailyCalendarView";
 import type { Booking, ShopSettings, BikeDetails } from "./Dashboard";
 
 interface BookingListProps {
@@ -346,7 +347,15 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
 
   return (
     <div className="space-y-4">
-      {viewMode === "day" && renderDayView()}
+      {viewMode === "day" && (
+        <DailyCalendarView
+          bookings={bookings}
+          selectedDate={selectedDate}
+          settings={settings}
+          onEditBooking={onEditBooking}
+          onDeleteBooking={onUpdateBooking}
+        />
+      )}
       {viewMode === "week" && renderWeekView()}
       {viewMode === "month" && renderMonthView()}
     </div>
