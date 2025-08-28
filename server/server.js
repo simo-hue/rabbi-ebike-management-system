@@ -7,9 +7,52 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Performance monitoring variables
+let requestCount = 0;
+let errorCount = 0;
+let totalResponseTime = 0;
+const startTime = Date.now();
+
+// In-memory log storage
+const logs = [];
+const maxLogs = 100;
+
+const addLog = (level, message, details = null) => {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    details
+  };
+  
+  logs.unshift(logEntry);
+  if (logs.length > maxLogs) {
+    logs.pop();
+  }
+  
+  console.log(`[${level.toUpperCase()}] ${message}`, details || '');
+};
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+
+// Performance tracking middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  requestCount++;
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    totalResponseTime += duration;
+    
+    if (res.statusCode >= 400) {
+      errorCount++;
+    }
+  });
+  
+  next();
+});
 
 // Database setup
 const dbPath = path.join(__dirname, 'rabbi_ebike.db');
@@ -353,32 +396,152 @@ app.post('/api/backup', (req, res) => {
   });
 });
 
-app.get('/api/database-stats', (req, res) => {
-  const stats = {};
-  
-  db.get("SELECT COUNT(*) as count FROM bookings", (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    stats.totalBookings = result.count;
+// Get database statistics
+app.get('/api/database/stats', (req, res) => {
+  try {
+    const stats = db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM bookings) as totalBookings,
+        (SELECT COUNT(DISTINCT bike_type) FROM bookings) as totalBikeTypes,
+        (SELECT COUNT(DISTINCT bike_number) FROM bookings) as totalBikes
+    `).get();
     
-    db.get("SELECT COUNT(*) as count FROM bikes", (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      stats.totalBikeTypes = result.count;
+    // Get database file size
+    const fs = require('fs');
+    let databaseSize = 0;
+    try {
+      const fileStats = fs.statSync(dbPath);
+      databaseSize = fileStats.size;
+    } catch (err) {
+      console.log('Could not get database file size:', err.message);
+    }
+    
+    res.json({
+      ...stats,
+      databaseSize,
+      lastModified: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Database stats error:', error);
+    res.status(500).json({ error: 'Failed to get database statistics' });
+  }
+});
+
+// Get performance metrics
+app.get('/api/monitoring/metrics', (req, res) => {
+  const uptime = Math.floor((Date.now() - startTime) / 1000);
+  const avgResponseTime = requestCount > 0 ? Math.round(totalResponseTime / requestCount) : 0;
+  const errorRate = requestCount > 0 ? errorCount / requestCount : 0;
+  
+  res.json({
+    totalRequests: requestCount,
+    avgResponseTime,
+    errorRate,
+    uptime
+  });
+});
+
+// Get logs
+app.get('/api/monitoring/logs', (req, res) => {
+  res.json(logs);
+});
+
+// Export all data
+app.get('/api/data/export', (req, res) => {
+  try {
+    addLog('info', 'Data export requested');
+    
+    const bookings = db.prepare('SELECT * FROM bookings ORDER BY created_at DESC').all();
+    const config = db.prepare('SELECT * FROM server_config').all();
+    
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      version: '1.0',
+      data: {
+        bookings,
+        config
+      }
+    };
+    
+    addLog('info', `Exported ${bookings.length} bookings and ${config.length} config entries`);
+    res.json(exportData);
+  } catch (error) {
+    addLog('error', 'Failed to export data', error.message);
+    res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+// Import data
+app.post('/api/data/import', (req, res) => {
+  try {
+    const { data } = req.body;
+    addLog('info', 'Data import requested');
+    
+    if (!data || !data.bookings) {
+      return res.status(400).json({ error: 'Invalid import data format' });
+    }
+    
+    // Clear existing data and import new data
+    db.run('DELETE FROM booking_bikes', (err) => {
+      if (err) {
+        addLog('error', 'Failed to clear booking_bikes', err.message);
+        return res.status(500).json({ error: 'Failed to import data' });
+      }
       
-      db.get("SELECT SUM(count) as total FROM bikes", (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        stats.totalBikes = result.total;
+      db.run('DELETE FROM bookings', (err) => {
+        if (err) {
+          addLog('error', 'Failed to clear bookings', err.message);
+          return res.status(500).json({ error: 'Failed to import data' });
+        }
         
-        const fs = require('fs');
-        fs.stat(dbPath, (err, stat) => {
-          if (err) return res.status(500).json({ error: err.message });
-          stats.databaseSize = stat.size;
-          stats.lastModified = stat.mtime;
-          
-          res.json(stats);
-        });
+        // Import bookings
+        const stmt = db.prepare(`
+          INSERT INTO bookings (id, customer_name, phone, email, start_time, end_time, booking_date, category, needs_guide, status, total_price, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        for (const booking of data.bookings) {
+          stmt.run([
+            booking.id, booking.customer_name || booking.customerName, 
+            booking.phone, booking.email,
+            booking.start_time || booking.startTime, booking.end_time || booking.endTime,
+            booking.booking_date || new Date(booking.date).toISOString().split('T')[0],
+            booking.category, booking.needs_guide || booking.needsGuide,
+            booking.status, booking.total_price || booking.totalPrice,
+            booking.created_at || new Date().toISOString(), 
+            booking.updated_at || new Date().toISOString()
+          ]);
+        }
+        stmt.finalize();
+        
+        // Import config if available
+        if (data.config && data.config.length > 0) {
+          db.run('DELETE FROM server_config WHERE id > 1', (err) => {
+            const configStmt = db.prepare(`
+              UPDATE server_config SET 
+                server_port = ?, auto_backup = ?, backup_interval_hours = ?, 
+                max_backup_files = ?, debug_mode = ?, updated_at = ?
+              WHERE id = 1
+            `);
+            
+            const config = data.config[0];
+            configStmt.run([
+              config.server_port, config.auto_backup, config.backup_interval_hours,
+              config.max_backup_files, config.debug_mode, 
+              config.updated_at || new Date().toISOString()
+            ]);
+            configStmt.finalize();
+          });
+        }
+        
+        addLog('info', `Imported ${data.bookings.length} bookings successfully`);
+        res.json({ success: true, message: 'Data imported successfully' });
       });
     });
-  });
+  } catch (error) {
+    addLog('error', 'Failed to import data', error.message);
+    res.status(500).json({ error: 'Failed to import data' });
+  }
 });
 
 app.listen(PORT, () => {

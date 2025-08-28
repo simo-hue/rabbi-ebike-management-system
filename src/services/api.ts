@@ -108,7 +108,28 @@ class ApiService {
   }
 
   async getDatabaseStats() {
-    return this.fetch('/database-stats');
+    return this.fetch('/database/stats');
+  }
+
+  // Performance monitoring
+  async getPerformanceMetrics() {
+    return this.fetch('/monitoring/metrics');
+  }
+
+  async getLogs() {
+    return this.fetch('/monitoring/logs');
+  }
+
+  // Data management
+  async exportAllData() {
+    return this.fetch('/data/export');
+  }
+
+  async importAllData(data: any) {
+    return this.fetch('/data/import', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 }
 

@@ -6,6 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiService } from "@/services/api";
 import { useServerStatus, useApiData } from "@/hooks/useApi";
@@ -19,7 +23,18 @@ import {
   DownloadIcon,
   HardDriveIcon,
   ClockIcon,
-  FileTextIcon
+  FileTextIcon,
+  PlayIcon,
+  BookIcon,
+  AlertTriangleIcon,
+  InfoIcon,
+  UploadIcon,
+  MonitorIcon,
+  ActivityIcon,
+  TimerIcon,
+  FolderIcon,
+  CopyIcon,
+  TrashIcon
 } from "lucide-react";
 
 interface ServerConfig {
@@ -39,9 +54,33 @@ interface DatabaseStats {
   lastModified: string;
 }
 
+interface PerformanceMetrics {
+  avgResponseTime: number;
+  totalRequests: number;
+  errorRate: number;
+  uptime: number;
+}
+
+interface LogEntry {
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+  details?: string;
+}
+
+interface SetupStep {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  required: boolean;
+}
+
 export const DevPanel = () => {
   const [apiConfig, setApiConfig] = useState(apiService.getConfig());
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [activeTab, setActiveTab] = useState("setup");
   const { toast } = useToast();
   const { isOnline, checking, checkStatus } = useServerStatus();
   
@@ -54,6 +93,49 @@ export const DevPanel = () => {
     () => apiService.getDatabaseStats(),
     []
   );
+
+  const { data: performanceMetrics, loading: perfLoading, refetch: refetchPerf } = useApiData<PerformanceMetrics>(
+    () => apiService.getPerformanceMetrics(),
+    []
+  );
+
+  const setupSteps: SetupStep[] = [
+    {
+      id: 'server-install',
+      title: 'Installa dipendenze server',
+      description: 'Naviga nella cartella server/ ed esegui: npm install',
+      completed: false,
+      required: true
+    },
+    {
+      id: 'server-start',
+      title: 'Avvia il server locale',
+      description: 'Esegui: npm start per avviare il server sulla porta 3001',
+      completed: isOnline,
+      required: true
+    },
+    {
+      id: 'connection-test',
+      title: 'Testa la connessione',
+      description: 'Verifica che il client possa comunicare con il server',
+      completed: isOnline,
+      required: true
+    },
+    {
+      id: 'database-setup',
+      title: 'Inizializza database',
+      description: 'Il database SQLite verrà creato automaticamente al primo avvio',
+      completed: !!dbStats,
+      required: true
+    },
+    {
+      id: 'backup-config',
+      title: 'Configura backup automatici',
+      description: 'Imposta i backup automatici per proteggere i tuoi dati',
+      completed: serverConfig?.auto_backup ?? false,
+      required: false
+    }
+  ];
 
   const handleApiConfigUpdate = () => {
     apiService.updateConfig(apiConfig);
@@ -126,6 +208,61 @@ export const DevPanel = () => {
     }
   };
 
+  const handleExportData = async () => {
+    try {
+      const data = await apiService.exportAllData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Export completato",
+        description: "I dati sono stati esportati con successo."
+      });
+    } catch (error) {
+      toast({
+        title: "Errore export",
+        description: "Impossibile esportare i dati.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleImportData = async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await apiService.importAllData(data);
+      
+      toast({
+        title: "Import completato",
+        description: "I dati sono stati importati con successo."
+      });
+      
+      refetchStats();
+      refetchConfig();
+    } catch (error) {
+      toast({
+        title: "Errore import",
+        description: "Impossibile importare i dati. Verifica il formato del file.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      const serverLogs = await apiService.getLogs();
+      setLogs(serverLogs);
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -134,10 +271,124 @@ export const DevPanel = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const formatUptime = (seconds: number) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+
+  const getStepIcon = (step: SetupStep) => {
+    if (step.completed) return <CheckCircleIcon className="w-4 h-4 text-green-500" />;
+    if (step.required) return <AlertTriangleIcon className="w-4 h-4 text-orange-500" />;
+    return <InfoIcon className="w-4 h-4 text-blue-500" />;
+  };
+
+  const completedSteps = setupSteps.filter(step => step.completed).length;
+  const setupProgress = (completedSteps / setupSteps.length) * 100;
+
   return (
     <div className="space-y-6">
-      {/* Connection Status */}
-      <Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="setup">
+            <BookIcon className="w-4 h-4 mr-2" />
+            Setup
+          </TabsTrigger>
+          <TabsTrigger value="connection">
+            <ServerIcon className="w-4 h-4 mr-2" />
+            Connessione
+          </TabsTrigger>
+          <TabsTrigger value="server">
+            <SettingsIcon className="w-4 h-4 mr-2" />
+            Server
+          </TabsTrigger>
+          <TabsTrigger value="database">
+            <DatabaseIcon className="w-4 h-4 mr-2" />
+            Database
+          </TabsTrigger>
+          <TabsTrigger value="monitoring">
+            <ActivityIcon className="w-4 h-4 mr-2" />
+            Monitoring
+          </TabsTrigger>
+          <TabsTrigger value="tools">
+            <FolderIcon className="w-4 h-4 mr-2" />
+            Tools
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Setup Guide Tab */}
+        <TabsContent value="setup" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookIcon className="w-5 h-5" />
+                Guida Configurazione Iniziale
+              </CardTitle>
+              <CardDescription>
+                Segui questi passaggi per configurare correttamente l'applicazione
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Progresso Setup</span>
+                  <span className="text-sm text-muted-foreground">
+                    {completedSteps}/{setupSteps.length} completati
+                  </span>
+                </div>
+                <Progress value={setupProgress} className="w-full" />
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                {setupSteps.map((step, index) => (
+                  <div key={step.id} className="flex gap-4 p-4 border rounded-lg">
+                    <div className="flex-shrink-0 mt-1">
+                      {getStepIcon(step)}
+                    </div>
+                    <div className="flex-grow space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{index + 1}. {step.title}</span>
+                        {step.required && <Badge variant="secondary">Richiesto</Badge>}
+                        {step.completed && <Badge variant="default">Completato</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{step.description}</p>
+                      
+                      {step.id === 'server-install' && (
+                        <div className="mt-2 p-3 bg-muted rounded-md">
+                          <code className="text-sm">
+                            cd server/<br/>
+                            npm install<br/>
+                            npm start
+                          </code>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {setupProgress === 100 && (
+                <Alert>
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <AlertTitle>Configurazione Completata!</AlertTitle>
+                  <AlertDescription>
+                    Tutti i passaggi sono stati completati. L'applicazione è pronta per l'uso.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Connection Tab */}
+        <TabsContent value="connection" className="space-y-4">
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ServerIcon className="w-5 h-5" />
@@ -221,11 +472,14 @@ export const DevPanel = () => {
               Testa Connessione
             </Button>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Server Configuration */}
-      <Card>
+        {/* Server Configuration Tab */}
+        <TabsContent value="server" className="space-y-4">
+
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <SettingsIcon className="w-5 h-5" />
@@ -314,11 +568,14 @@ export const DevPanel = () => {
           ) : (
             <p className="text-muted-foreground">Server non raggiungibile</p>
           )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Database Management */}
-      <Card>
+        {/* Database Management Tab */}
+        <TabsContent value="database" className="space-y-4">
+
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DatabaseIcon className="w-5 h-5" />
@@ -394,61 +651,247 @@ export const DevPanel = () => {
           ) : (
             <p className="text-muted-foreground">Database non accessibile</p>
           )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Azioni Rapide</CardTitle>
-          <CardDescription>
-            Operazioni di sviluppo e manutenzione
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                localStorage.clear();
-                toast({
-                  title: "Cache cancellata",
-                  description: "Tutti i dati locali sono stati rimossi."
-                });
-              }}
-            >
-              Cancella Cache Browser
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={() => {
-                window.location.reload();
-              }}
-            >
-              Ricarica Applicazione
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={() => {
-                const data = {
-                  config: apiConfig,
-                  serverStatus: isOnline,
-                  timestamp: new Date().toISOString()
-                };
-                navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-                toast({
-                  title: "Info copiate",
-                  description: "Informazioni di debug copiate negli appunti."
-                });
-              }}
-            >
-              Copia Info Debug
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Monitoring Tab */}
+        <TabsContent value="monitoring" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ActivityIcon className="w-5 h-5" />
+                Monitoraggio Performance
+              </CardTitle>
+              <CardDescription>
+                Statistiche delle prestazioni del server
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {perfLoading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCwIcon className="w-4 h-4 animate-spin" />
+                  <span>Caricamento metriche...</span>
+                </div>
+              ) : performanceMetrics ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <TimerIcon className="w-4 h-4 text-blue-500" />
+                      <span className="text-sm font-medium">Tempo Risposta</span>
+                    </div>
+                    <p className="text-2xl font-bold">{performanceMetrics.avgResponseTime}ms</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <MonitorIcon className="w-4 h-4 text-green-500" />
+                      <span className="text-sm font-medium">Richieste Totali</span>
+                    </div>
+                    <p className="text-2xl font-bold">{performanceMetrics.totalRequests}</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <XCircleIcon className="w-4 h-4 text-red-500" />
+                      <span className="text-sm font-medium">Tasso Errori</span>
+                    </div>
+                    <p className="text-2xl font-bold">{(performanceMetrics.errorRate * 100).toFixed(1)}%</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <ClockIcon className="w-4 h-4 text-purple-500" />
+                      <span className="text-sm font-medium">Uptime</span>
+                    </div>
+                    <p className="text-lg font-bold">{formatUptime(performanceMetrics.uptime)}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Metriche non disponibili</p>
+              )}
+
+              <Separator />
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Log Server</Label>
+                  <Button onClick={fetchLogs} variant="outline" size="sm">
+                    <RefreshCwIcon className="w-4 h-4 mr-2" />
+                    Aggiorna Log
+                  </Button>
+                </div>
+                
+                <div className="max-h-64 overflow-y-auto border rounded-md p-3 bg-muted/50">
+                  {logs.length > 0 ? (
+                    <div className="space-y-2">
+                      {logs.map((log, index) => (
+                        <div key={index} className="text-xs font-mono">
+                          <span className="text-muted-foreground">{log.timestamp}</span>
+                          <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                            log.level === 'error' ? 'bg-red-100 text-red-800' :
+                            log.level === 'warn' ? 'bg-yellow-100 text-yellow-800' :
+                            log.level === 'info' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {log.level.toUpperCase()}
+                          </span>
+                          <span className="ml-2">{log.message}</span>
+                          {log.details && (
+                            <div className="ml-4 mt-1 text-muted-foreground">{log.details}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">Nessun log disponibile</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tools Tab */}
+        <TabsContent value="tools" className="space-y-4">
+
+          {/* Data Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FolderIcon className="w-5 h-5" />
+                Gestione Dati
+              </CardTitle>
+              <CardDescription>
+                Export, import e backup dei dati
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button onClick={handleExportData} variant="outline">
+                  <DownloadIcon className="w-4 h-4 mr-2" />
+                  Export Dati
+                </Button>
+                
+                <div>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImportData(file);
+                    }}
+                    className="hidden"
+                    id="import-file"
+                  />
+                  <Button asChild variant="outline">
+                    <label htmlFor="import-file" className="cursor-pointer">
+                      <UploadIcon className="w-4 h-4 mr-2" />
+                      Import Dati
+                    </label>
+                  </Button>
+                </div>
+                
+                <Button onClick={handleCreateBackup} variant="outline">
+                  <DatabaseIcon className="w-4 h-4 mr-2" />
+                  Backup Manuale
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Development Tools */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Strumenti Sviluppo</CardTitle>
+              <CardDescription>
+                Operazioni di sviluppo e manutenzione
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    localStorage.clear();
+                    toast({
+                      title: "Cache cancellata",
+                      description: "Tutti i dati locali sono stati rimossi."
+                    });
+                  }}
+                >
+                  <TrashIcon className="w-4 h-4 mr-2" />
+                  Cancella Cache Browser
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    window.location.reload();
+                  }}
+                >
+                  <RefreshCwIcon className="w-4 h-4 mr-2" />
+                  Ricarica Applicazione
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const data = {
+                      config: apiConfig,
+                      serverStatus: isOnline,
+                      serverConfig,
+                      dbStats,
+                      performanceMetrics,
+                      timestamp: new Date().toISOString()
+                    };
+                    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+                    toast({
+                      title: "Info copiate",
+                      description: "Informazioni di debug copiate negli appunti."
+                    });
+                  }}
+                >
+                  <CopyIcon className="w-4 h-4 mr-2" />
+                  Copia Info Debug
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={refetchPerf}
+                >
+                  <ActivityIcon className="w-4 h-4 mr-2" />
+                  Aggiorna Metriche
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    checkStatus();
+                    refetchConfig();
+                    refetchStats();
+                    refetchPerf();
+                  }}
+                >
+                  <RefreshCwIcon className="w-4 h-4 mr-2" />
+                  Aggiorna Tutto
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const endpoint = `${apiConfig.baseUrl}/docs`;
+                    window.open(endpoint, '_blank');
+                  }}
+                >
+                  <InfoIcon className="w-4 h-4 mr-2" />
+                  API Docs
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
