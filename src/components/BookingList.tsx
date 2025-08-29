@@ -15,9 +15,16 @@ interface BookingListProps {
   settings: ShopSettings;
   onUpdateBooking: (bookingId: string) => void;
   onEditBooking: (booking: Booking) => void;
+  onDateSelect: (date: Date) => void;
+  onViewModeChange: (mode: "day" | "week" | "month") => void;
 }
 
-export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpdateBooking, onEditBooking }: BookingListProps) => {
+export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpdateBooking, onEditBooking, onDateSelect, onViewModeChange }: BookingListProps) => {
+
+  const handleBookingClick = (bookingDate: Date) => {
+    onDateSelect(bookingDate);
+    onViewModeChange("day");
+  };
   
   const getBikeDetailsText = (bikeDetails: BikeDetails[]): string => {
     return bikeDetails.map(bike => {
@@ -262,6 +269,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                           'bg-unavailable/10 hover:bg-unavailable/20 border border-unavailable/20'
                         }`}
                         title={`${booking.customerName} - ${booking.startTime}-${booking.endTime} - ${getBikeDetailsText(booking.bikeDetails)}`}
+                        onClick={() => handleBookingClick(day)}
                       >
                         <div className="font-medium truncate">{booking.customerName}</div>
                         <div className="text-muted-foreground truncate">
@@ -327,7 +335,12 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                 </div>
                 <div className="space-y-1">
                   {dayBookings.slice(0, 3).map((booking) => (
-                    <div key={booking.id} className="text-xs p-1 bg-electric-green/10 rounded truncate">
+                    <div 
+                      key={booking.id} 
+                      className="text-xs p-1 bg-electric-green/10 rounded truncate cursor-pointer hover:bg-electric-green/20 transition-colors"
+                      onClick={() => handleBookingClick(day)}
+                      title={`${booking.customerName} - ${booking.startTime}-${booking.endTime}`}
+                    >
                       {booking.customerName}
                     </div>
                   ))}

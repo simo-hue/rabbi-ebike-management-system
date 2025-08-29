@@ -404,6 +404,8 @@ export const Dashboard = () => {
                     settings={settings}
                     onUpdateBooking={handleDeleteBooking}
                     onEditBooking={handleEditBooking}
+                    onDateSelect={setSelectedDate}
+                    onViewModeChange={setViewMode}
                   />
                 </CardContent>
               </Card>
