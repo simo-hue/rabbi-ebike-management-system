@@ -44,6 +44,19 @@ interface ServerConfig {
   backup_interval_hours: number;
   max_backup_files: number;
   debug_mode: boolean;
+  // New e-bike specific settings
+  notification_email?: string;
+  sms_notifications?: boolean;
+  maintenance_reminder_days?: number;
+  low_battery_alert?: boolean;
+  auto_pricing_updates?: boolean;
+  peak_hour_multiplier?: number;
+  seasonal_discount?: number;
+  minimum_booking_hours?: number;
+  max_booking_days?: number;
+  weather_integration?: boolean;
+  gps_tracking?: boolean;
+  insurance_required?: boolean;
 }
 
 interface DatabaseStats {
@@ -134,6 +147,20 @@ export const DevPanel = () => {
       description: 'Imposta i backup automatici per proteggere i tuoi dati',
       completed: serverConfig?.auto_backup ?? false,
       required: false
+    },
+    {
+      id: 'notification-setup',
+      title: 'Configura notifiche',
+      description: 'Imposta email e SMS per ricevere notifiche automatiche',
+      completed: !!(serverConfig?.notification_email || serverConfig?.sms_notifications),
+      required: false
+    },
+    {
+      id: 'pricing-setup',
+      title: 'Configura prezzi dinamici',
+      description: 'Attiva aggiornamenti automatici dei prezzi basati su orari e stagioni',
+      completed: serverConfig?.auto_pricing_updates ?? false,
+      required: false
     }
   ];
 
@@ -173,7 +200,19 @@ export const DevPanel = () => {
         autoBackup: updates.auto_backup ?? serverConfig.auto_backup,
         backupIntervalHours: updates.backup_interval_hours ?? serverConfig.backup_interval_hours,
         maxBackupFiles: updates.max_backup_files ?? serverConfig.max_backup_files,
-        debugMode: updates.debug_mode ?? serverConfig.debug_mode
+        debugMode: updates.debug_mode ?? serverConfig.debug_mode,
+        notificationEmail: updates.notification_email ?? serverConfig.notification_email,
+        smsNotifications: updates.sms_notifications ?? serverConfig.sms_notifications,
+        maintenanceReminderDays: updates.maintenance_reminder_days ?? serverConfig.maintenance_reminder_days,
+        lowBatteryAlert: updates.low_battery_alert ?? serverConfig.low_battery_alert,
+        autoPricingUpdates: updates.auto_pricing_updates ?? serverConfig.auto_pricing_updates,
+        peakHourMultiplier: updates.peak_hour_multiplier ?? serverConfig.peak_hour_multiplier,
+        seasonalDiscount: updates.seasonal_discount ?? serverConfig.seasonal_discount,
+        minimumBookingHours: updates.minimum_booking_hours ?? serverConfig.minimum_booking_hours,
+        maxBookingDays: updates.max_booking_days ?? serverConfig.max_booking_days,
+        weatherIntegration: updates.weather_integration ?? serverConfig.weather_integration,
+        gpsTracking: updates.gps_tracking ?? serverConfig.gps_tracking,
+        insuranceRequired: updates.insurance_required ?? serverConfig.insurance_required
       });
       
       toast({
@@ -293,7 +332,7 @@ export const DevPanel = () => {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="setup">
             <BookIcon className="w-4 h-4 mr-2" />
             Setup
@@ -305,6 +344,10 @@ export const DevPanel = () => {
           <TabsTrigger value="server">
             <SettingsIcon className="w-4 h-4 mr-2" />
             Server
+          </TabsTrigger>
+          <TabsTrigger value="ebike">
+            <InfoIcon className="w-4 h-4 mr-2" />
+            E-Bike
           </TabsTrigger>
           <TabsTrigger value="database">
             <DatabaseIcon className="w-4 h-4 mr-2" />
@@ -568,6 +611,278 @@ export const DevPanel = () => {
           ) : (
             <p className="text-muted-foreground">Server non raggiungibile</p>
           )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* E-Bike Advanced Settings Tab */}
+        <TabsContent value="ebike" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <InfoIcon className="w-5 h-5" />
+                Configurazione Avanzata E-Bike
+              </CardTitle>
+              <CardDescription>
+                Impostazioni specifiche per il noleggio e-bike
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {configLoading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCwIcon className="w-4 h-4 animate-spin" />
+                  <span>Caricamento configurazione...</span>
+                </div>
+              ) : serverConfig ? (
+                <>
+                  {/* Business Rules */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Regole di Business</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="maxBookingDays">Massimo Giorni Prenotazione</Label>
+                        <Input
+                          id="maxBookingDays"
+                          type="number"
+                          value={serverConfig.max_booking_days || 7}
+                          onChange={(e) => handleServerConfigUpdate({ 
+                            max_booking_days: parseInt(e.target.value) || 7 
+                          })}
+                          placeholder="7"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Numero massimo di giorni che un cliente può prenotare in anticipo
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="minimumBookingHours2">Durata Minima Noleggio (ore)</Label>
+                        <Input
+                          id="minimumBookingHours2"
+                          type="number"
+                          value={serverConfig.minimum_booking_hours || 1}
+                          onChange={(e) => handleServerConfigUpdate({ 
+                            minimum_booking_hours: parseInt(e.target.value) || 1 
+                          })}
+                          placeholder="1"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Durata minima per ogni noleggio
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Notification System */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Sistema Notifiche</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="notificationEmail2">Email Amministratore</Label>
+                        <Input
+                          id="notificationEmail2"
+                          type="email"
+                          value={serverConfig.notification_email || ''}
+                          onChange={(e) => handleServerConfigUpdate({ 
+                            notification_email: e.target.value 
+                          })}
+                          placeholder="admin@rabbibike.com"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Email per ricevere notifiche importanti
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="maintenanceReminder2">Promemoria Manutenzione (giorni)</Label>
+                        <Input
+                          id="maintenanceReminder2"
+                          type="number"
+                          value={serverConfig.maintenance_reminder_days || 30}
+                          onChange={(e) => handleServerConfigUpdate({ 
+                            maintenance_reminder_days: parseInt(e.target.value) || 30 
+                          })}
+                          placeholder="30"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Frequenza promemoria per controlli bici
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <Label>Notifiche SMS</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Invia SMS di conferma ai clienti
+                          </p>
+                        </div>
+                        <Switch
+                          checked={serverConfig.sms_notifications || false}
+                          onCheckedChange={(checked) => handleServerConfigUpdate({ sms_notifications: checked })}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <Label>Alert Batteria Scarica</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Avviso quando batteria inferiore al 20%
+                          </p>
+                        </div>
+                        <Switch
+                          checked={serverConfig.low_battery_alert || false}
+                          onCheckedChange={(checked) => handleServerConfigUpdate({ low_battery_alert: checked })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Pricing & Revenue */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Prezzi e Ricavi</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="peakHourMultiplier2">Moltiplicatore Ore di Punta</Label>
+                        <Input
+                          id="peakHourMultiplier2"
+                          type="number"
+                          step="0.1"
+                          value={serverConfig.peak_hour_multiplier || 1.5}
+                          onChange={(e) => handleServerConfigUpdate({ 
+                            peak_hour_multiplier: parseFloat(e.target.value) || 1.5 
+                          })}
+                          placeholder="1.5"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Es: 1.5 = +50% durante ore di punta
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="seasonalDiscount2">Sconto Stagionale (%)</Label>
+                        <Input
+                          id="seasonalDiscount2"
+                          type="number"
+                          value={serverConfig.seasonal_discount || 0}
+                          onChange={(e) => handleServerConfigUpdate({ 
+                            seasonal_discount: parseInt(e.target.value) || 0 
+                          })}
+                          placeholder="15"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Sconto percentuale per stagione bassa
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <Label>Prezzi Dinamici</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Aggiorna automaticamente i prezzi
+                          </p>
+                        </div>
+                        <Switch
+                          checked={serverConfig.auto_pricing_updates || false}
+                          onCheckedChange={(checked) => handleServerConfigUpdate({ auto_pricing_updates: checked })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Advanced Features */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Funzionalità Avanzate</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <Label>Integrazione Meteo</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Considera condizioni meteo per suggerimenti
+                          </p>
+                        </div>
+                        <Switch
+                          checked={serverConfig.weather_integration || false}
+                          onCheckedChange={(checked) => handleServerConfigUpdate({ weather_integration: checked })}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <Label>Tracciamento GPS</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Monitora posizione bici in tempo reale
+                          </p>
+                        </div>
+                        <Switch
+                          checked={serverConfig.gps_tracking || false}
+                          onCheckedChange={(checked) => handleServerConfigUpdate({ gps_tracking: checked })}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <Label>Assicurazione Obbligatoria</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Richiedi assicurazione per ogni noleggio
+                          </p>
+                        </div>
+                        <Switch
+                          checked={serverConfig.insurance_required || false}
+                          onCheckedChange={(checked) => handleServerConfigUpdate({ insurance_required: checked })}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="space-y-1">
+                          <Label>Modalità Manutenzione</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Sistema di gestione manutenzioni
+                          </p>
+                        </div>
+                        <Switch
+                          checked={false} // Da implementare
+                          onCheckedChange={(checked) => {
+                            toast({
+                              title: "Funzionalità in arrivo",
+                              description: "La gestione manutenzioni sarà disponibile presto."
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="flex gap-2 pt-4">
+                    <Button onClick={refetchConfig} variant="outline">
+                      <RefreshCwIcon className="w-4 h-4 mr-2" />
+                      Ricarica Configurazione
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        toast({
+                          title: "Configurazione salvata",
+                          description: "Tutte le impostazioni sono state applicate."
+                        });
+                      }}
+                      variant="default"
+                    >
+                      <CheckCircleIcon className="w-4 h-4 mr-2" />
+                      Applica Tutto
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-muted-foreground">Server non raggiungibile</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -871,27 +1186,20 @@ export const DevPanel = () => {
                     refetchConfig();
                     refetchStats();
                     refetchPerf();
+                    toast({
+                      title: "Dati aggiornati",
+                      description: "Tutte le informazioni sono state ricaricate."
+                    });
                   }}
                 >
                   <RefreshCwIcon className="w-4 h-4 mr-2" />
                   Aggiorna Tutto
                 </Button>
-                
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const endpoint = `${apiConfig.baseUrl}/docs`;
-                    window.open(endpoint, '_blank');
-                  }}
-                >
-                  <InfoIcon className="w-4 h-4 mr-2" />
-                  API Docs
-                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
+        </Tabs>
+      </div>
+    );
+  };
