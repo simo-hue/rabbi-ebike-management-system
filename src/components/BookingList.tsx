@@ -25,6 +25,27 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
     onDateSelect(bookingDate);
     onViewModeChange("day");
   };
+
+  const getBikeAvailabilityColor = (date: Date): string => {
+    const dayBookings = bookings.filter(booking => 
+      isSameDay(booking.date, date) && booking.status === "confirmed"
+    );
+
+    // Calculate total bikes used on this day
+    const totalBikesUsed = dayBookings.reduce((total, booking) => {
+      return total + booking.bikeDetails.reduce((bookingTotal, bike) => bookingTotal + bike.count, 0);
+    }, 0);
+
+    // Calculate total available bikes
+    const totalBikesAvailable = settings.totalBikes.reduce((total, bike) => total + bike.count, 0);
+
+    // Calculate availability percentage
+    const availabilityPercentage = ((totalBikesAvailable - totalBikesUsed) / totalBikesAvailable) * 100;
+
+    if (availabilityPercentage >= 70) return "bg-available"; // Verde - maggior parte disponibili
+    if (availabilityPercentage <= 20) return "bg-unavailable"; // Rosso - poche o nessuna disponibili
+    return "bg-booked"; // Giallo - poche disponibili
+  };
   
   const getBikeDetailsText = (bikeDetails: BikeDetails[]): string => {
     return bikeDetails.map(bike => {
@@ -249,11 +270,14 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                   <div className={`text-sm font-medium mb-2 ${isToday ? 'text-electric-green font-bold' : ''}`}>
                     <div className="flex items-center justify-between">
                       <span>{format(day, "d")}</span>
-                      {dayBookings.length > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {dayBookings.length}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {dayBookings.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {dayBookings.length}
+                          </Badge>
+                        )}
+                        <div className={`w-3 h-3 rounded-full ${getBikeAvailabilityColor(day)}`} title="Disponibilità bici"></div>
+                      </div>
                     </div>
                     <div className="text-xs text-muted-foreground font-normal mt-1">
                       {format(day, "MMM", { locale: it })}
@@ -330,8 +354,9 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
           return (
             <Card key={day.toISOString()} className="min-h-[100px] hover:shadow-md transition-shadow">
               <CardContent className="p-2">
-                <div className="text-sm font-medium mb-1">
-                  {format(day, "d")}
+                <div className="text-sm font-medium mb-1 flex items-center justify-between">
+                  <span>{format(day, "d")}</span>
+                  <div className={`w-2 h-2 rounded-full ${getBikeAvailabilityColor(day)}`} title="Disponibilità bici"></div>
                 </div>
                 <div className="space-y-1">
                   {dayBookings.slice(0, 3).map((booking) => (
