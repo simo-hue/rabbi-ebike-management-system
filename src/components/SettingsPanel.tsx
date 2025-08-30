@@ -10,7 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusIcon, MinusIcon, SaveIcon, XIcon, MoonIcon, SunIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ShopSettings, BikeDetails, BikeType, BikeSize, BikeSuspension } from "./Dashboard";
+import type { ShopSettings } from "./Dashboard";
+import type { BikeDetails, BikeType, BikeSize, BikeSuspension } from "@/types/bike";
 import { DevPanel } from "./DevPanel";
 
 interface SettingsPanelProps {
@@ -62,9 +63,8 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           <Tabs defaultValue="general" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">Generale</TabsTrigger>
-              <TabsTrigger value="bikes">Biciclette</TabsTrigger>
               <TabsTrigger value="pricing">Prezzi</TabsTrigger>
               <TabsTrigger value="appearance">Aspetto</TabsTrigger>
               <TabsTrigger value="developer">Dev</TabsTrigger>
@@ -149,146 +149,7 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
               </Card>
             </TabsContent>
 
-            <TabsContent value="bikes" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Inventario Biciclette</CardTitle>
-                  <CardDescription>Gestisci le tipologie e quantità di bici disponibili</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {formData.totalBikes.map((bike, index) => (
-                    <Card key={index} className="p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div className="space-y-2">
-                          <Label>Tipo</Label>
-                          <Select
-                            value={bike.type}
-                            onValueChange={(value: BikeType) => {
-                              const updated = [...formData.totalBikes];
-                              updated[index] = { ...bike, type: value };
-                              setFormData({ ...formData, totalBikes: updated });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="adulto">Adulto</SelectItem>
-                              <SelectItem value="bambino">Bambino</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Taglia</Label>
-                          <Select
-                            value={bike.size}
-                            onValueChange={(value: BikeSize) => {
-                              const updated = [...formData.totalBikes];
-                              updated[index] = { ...bike, size: value };
-                              setFormData({ ...formData, totalBikes: updated });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="S">S</SelectItem>
-                              <SelectItem value="M">M</SelectItem>
-                              <SelectItem value="L">L</SelectItem>
-                              <SelectItem value="XL">XL</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Sospensioni</Label>
-                          <Select
-                            value={bike.suspension}
-                            onValueChange={(value: BikeSuspension) => {
-                              const updated = [...formData.totalBikes];
-                              updated[index] = { ...bike, suspension: value };
-                              setFormData({ ...formData, totalBikes: updated });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="front-only">Solo Davanti</SelectItem>
-                              <SelectItem value="full-suspension">Full Suspension</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Quantità</Label>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const updated = [...formData.totalBikes];
-                                updated[index] = { ...bike, count: Math.max(0, bike.count - 1) };
-                                setFormData({ ...formData, totalBikes: updated });
-                              }}
-                              className="h-8 w-8 p-0"
-                            >
-                              <MinusIcon className="w-4 h-4" />
-                            </Button>
-                            <span className="w-12 text-center">{bike.count}</span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const updated = [...formData.totalBikes];
-                                updated[index] = { ...bike, count: bike.count + 1 };
-                                setFormData({ ...formData, totalBikes: updated });
-                              }}
-                              className="h-8 w-8 p-0"
-                            >
-                              <PlusIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                const updated = formData.totalBikes.filter((_, i) => i !== index);
-                                setFormData({ ...formData, totalBikes: updated });
-                              }}
-                              className="ml-2"
-                            >
-                              Rimuovi
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                  
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const newBike: BikeDetails = {
-                        type: "adulto",
-                        size: "M",
-                        suspension: "front-only",
-                        count: 1
-                      };
-                      setFormData({ ...formData, totalBikes: [...formData.totalBikes, newBike] });
-                    }}
-                    className="w-full"
-                  >
-                    <PlusIcon className="w-4 h-4 mr-2" />
-                    Aggiungi Tipologia Bici
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
+{/* Bikes tab removed - moved to Garage */}
 
             <TabsContent value="pricing" className="space-y-4">
               <Card>

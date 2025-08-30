@@ -13,17 +13,12 @@ import { Statistics } from "./Statistics";
 import { apiService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useServerStatus } from "@/hooks/useApi";
+import { DevPanel } from "./DevPanel";
+import { Garage } from "./Garage";
 
-export type BikeType = "bambino" | "adulto";
-export type BikeSize = "S" | "M" | "L" | "XL";
-export type BikeSuspension = "full-suspension" | "front-only";
-
-export type BikeDetails = {
-  type: BikeType;
-  size: BikeSize;
-  suspension: BikeSuspension;
-  count: number;
-};
+// Import types from dedicated file
+import type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord } from "@/types/bike";
+export type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord };
 
 export type BookingCategory = "hourly" | "half-day" | "full-day";
 
@@ -50,7 +45,8 @@ export type Pricing = {
 };
 
 export type ShopSettings = {
-  totalBikes: BikeDetails[];
+  totalBikes: BikeDetails[]; // Legacy compatibility
+  bikes: Bike[]; // New detailed bike management
   openingTime: string;
   closingTime: string;
   shopName: string;
@@ -67,6 +63,7 @@ const defaultSettings: ShopSettings = {
     { type: "adulto", size: "M", suspension: "full-suspension", count: 2 },
     { type: "bambino", size: "S", suspension: "front-only", count: 1 },
   ],
+  bikes: [], // Will be populated with detailed bike data
   openingTime: "09:00",
   closingTime: "19:00",
   shopName: "Rabbi E-Bike Rent Go & Fun",
@@ -86,6 +83,7 @@ export const Dashboard = () => {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [showGarage, setShowGarage] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
@@ -305,6 +303,16 @@ export const Dashboard = () => {
                 <BarChart3Icon className="w-4 h-4" />
                 Statistiche
               </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowGarage(true)}
+                className="gap-2"
+              >
+                <BikeIcon className="w-4 h-4" />
+                Garage
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -442,6 +450,18 @@ export const Dashboard = () => {
           bookings={bookings}
           settings={settings}
           onClose={() => setShowStatistics(false)}
+        />
+      )}
+
+      {showGarage && (
+        <Garage
+          bikes={settings.bikes || []}
+          onUpdateBikes={(bikes) => {
+            const updatedSettings = { ...settings, bikes };
+            setSettings(updatedSettings);
+            handleSaveSettings(updatedSettings);
+          }}
+          onClose={() => setShowGarage(false)}
         />
       )}
     </div>
