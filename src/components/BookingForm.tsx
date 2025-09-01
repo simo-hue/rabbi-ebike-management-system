@@ -36,7 +36,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
 
   const [selectedBikes, setSelectedBikes] = useState<BikeDetails[]>(editingBooking?.bikeDetails || []);
   const [customers, setCustomers] = useState<{ name: string; height: number }[]>(
-    editingBooking?.customers || [{ name: "", height: 0 }]
+    editingBooking?.customers || [{ name: "Persona 1", height: 0 }]
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [estimatedPrice, setEstimatedPrice] = useState(0);
@@ -98,7 +98,8 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   };
 
   const addCustomer = () => {
-    setCustomers([...customers, { name: "", height: 0 }]);
+    const newIndex = customers.length + 1;
+    setCustomers([...customers, { name: `Persona ${newIndex}`, height: 0 }]);
   };
 
   const removeCustomer = (index: number) => {
@@ -133,9 +134,13 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
     }
 
     // Validate customers
-    const validCustomers = customers.filter(c => c.name.trim() !== "");
-    if (validCustomers.length === 0) {
-      newErrors.customers = "Inserire almeno un cliente con nome";
+    const validCustomers = customers.filter(c => c.name.trim() !== "" && c.name !== `Persona ${customers.indexOf(c) + 1}`);
+    if (validCustomers.length === 0 && customers.some(c => c.name.trim() !== "")) {
+      // Allow default names like "Persona 1" to be valid
+      const customersWithValidNames = customers.filter(c => c.name.trim() !== "");
+      if (customersWithValidNames.length === 0) {
+        newErrors.customers = "Inserire almeno un cliente con nome";
+      }
     }
 
     setErrors(newErrors);
@@ -207,7 +212,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
             <div className="space-y-2">
               <Label htmlFor="customerName" className="flex items-center gap-2">
                 <UserIcon className="w-4 h-4" />
-                Nome Cliente *
+                Nome Prenotazione *
               </Label>
               <Input
                 id="customerName"
