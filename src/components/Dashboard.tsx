@@ -43,6 +43,9 @@ export type Pricing = {
   halfDay: number;
   fullDay: number;
   guideHourly: number;
+  trailerHourly: number;
+  trailerHalfDay: number;
+  trailerFullDay: number;
 };
 
 export type ShopSettings = {
@@ -74,7 +77,10 @@ const defaultSettings: ShopSettings = {
     hourly: 15,
     halfDay: 45,
     fullDay: 70,
-    guideHourly: 25
+    guideHourly: 25,
+    trailerHourly: 8,
+    trailerHalfDay: 20,
+    trailerFullDay: 35
   }
 };
 

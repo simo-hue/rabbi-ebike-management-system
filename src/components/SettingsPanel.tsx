@@ -220,6 +220,53 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="trailerHourlyRate">Tariffa Carrello Oraria (€)</Label>
+                      <Input
+                        id="trailerHourlyRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricing.trailerHourly}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing: { ...formData.pricing, trailerHourly: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="trailerHalfDayRate">Tariffa Carrello Mezza Giornata (€)</Label>
+                      <Input
+                        id="trailerHalfDayRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricing.trailerHalfDay}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing: { ...formData.pricing, trailerHalfDay: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="trailerFullDayRate">Tariffa Carrello Giornata Intera (€)</Label>
+                      <Input
+                        id="trailerFullDayRate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricing.trailerFullDay}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          pricing: { ...formData.pricing, trailerFullDay: parseFloat(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                  </div>
+
                   <div className="mt-4 p-4 bg-muted/50 rounded-lg">
                     <h4 className="font-medium mb-2">Anteprima Prezzi</h4>
                     <div className="space-y-1 text-sm">
@@ -238,6 +285,18 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
                       <div className="flex justify-between">
                         <span>Guida per 1 ora:</span>
                         <span>€{formData.pricing.guideHourly}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>1 carrello per 1 ora:</span>
+                        <span>€{formData.pricing.trailerHourly}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>1 carrello mezza giornata:</span>
+                        <span>€{formData.pricing.trailerHalfDay}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>1 carrello giornata intera:</span>
+                        <span>€{formData.pricing.trailerFullDay}</span>
                       </div>
                     </div>
                   </div>

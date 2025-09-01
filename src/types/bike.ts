@@ -1,4 +1,4 @@
-export type BikeType = "bambino" | "adulto" | "carrello-porta-bimbi";
+export type BikeType = "bambino" | "adulto" | "carrello-porta-bimbi" | "trailer";
 export type BikeSize = "S" | "M" | "L" | "XL";
 export type BikeSuspension = "full-suspension" | "front-only";
 
@@ -18,11 +18,11 @@ export type Bike = {
   brand: string;
   model?: string;
   type: BikeType;
-  size: BikeSize;
-  suspension: BikeSuspension;
+  size?: BikeSize; // Optional for trailers
+  suspension?: BikeSuspension; // Optional for trailers
   description: string;
-  minHeight: number; // in cm
-  maxHeight: number; // in cm
+  minHeight?: number; // in cm - Optional for trailers
+  maxHeight?: number; // in cm - Optional for trailers
   purchaseDate?: Date;
   purchasePrice?: number;
   isActive: boolean;

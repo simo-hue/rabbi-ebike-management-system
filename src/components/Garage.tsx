@@ -38,6 +38,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
   const [isAddingBike, setIsAddingBike] = useState(false);
   const [isAddingMaintenance, setIsAddingMaintenance] = useState(false);
   const [view, setView] = useState<"list" | "stats">("list");
+  const [showCostDetails, setShowCostDetails] = useState(false);
   const { toast } = useToast();
 
   const [newBike, setNewBike] = useState<Partial<Bike>>({
@@ -79,11 +80,11 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       brand: newBike.brand!,
       model: newBike.model || "",
       type: newBike.type!,
-      size: newBike.size!,
-      suspension: newBike.suspension!,
+      size: newBike.type === "trailer" ? undefined : newBike.size!,
+      suspension: newBike.type === "trailer" ? undefined : newBike.suspension!,
       description: newBike.description!,
-      minHeight: newBike.minHeight!,
-      maxHeight: newBike.maxHeight!,
+      minHeight: newBike.type === "trailer" ? undefined : newBike.minHeight!,
+      maxHeight: newBike.type === "trailer" ? undefined : newBike.maxHeight!,
       purchaseDate: newBike.purchaseDate,
       purchasePrice: newBike.purchasePrice,
       isActive: newBike.isActive!,
@@ -261,14 +262,18 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                           <span>Tipo:</span>
                           <span className="capitalize">{bike.type}</span>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Taglia:</span>
-                          <span>{bike.size}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Altezza:</span>
-                          <span>{bike.minHeight}-{bike.maxHeight}cm</span>
-                        </div>
+                        {bike.size && (
+                          <div className="flex justify-between text-sm">
+                            <span>Taglia:</span>
+                            <span>{bike.size}</span>
+                          </div>
+                        )}
+                        {bike.minHeight && bike.maxHeight && (
+                          <div className="flex justify-between text-sm">
+                            <span>Altezza:</span>
+                            <span>{bike.minHeight}-{bike.maxHeight}cm</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-sm">
                           <span>Manutenzioni:</span>
                           <span>{bike.maintenance.length}</span>
@@ -396,31 +401,34 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     <TableBody>
                        {bikes.map((bike) => {
                          const profitability = calculateProfitability(bike);
-                         return (
-                           <TableRow key={bike.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedBike(bike)}>
-                             <TableCell className="font-medium">{bike.name}</TableCell>
-                             <TableCell>{bike.brand}</TableCell>
-                             <TableCell className="capitalize">{bike.type} {bike.size}</TableCell>
-                             <TableCell>{bike.maintenance.length}</TableCell>
-                             <TableCell>€{bike.totalMaintenanceCost}</TableCell>
-                             <TableCell className={getProfitabilityColor(profitability)}>
-                               €{profitability.toFixed(0)}
-                             </TableCell>
-                             <TableCell>
-                               <Badge variant={bike.isActive ? "default" : "secondary"}>
-                                 {bike.isActive ? "Attiva" : "Non attiva"}
-                               </Badge>
-                             </TableCell>
-                             <TableCell>
-                               <Button size="sm" variant="outline" onClick={(e) => {
-                                 e.stopPropagation();
-                                 setSelectedBike(bike);
-                               }}>
-                                 Dettagli
-                               </Button>
-                             </TableCell>
-                           </TableRow>
-                         );
+                        return (
+                          <TableRow key={bike.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                            setSelectedBike(bike);
+                            setShowCostDetails(true);
+                          }}>
+                            <TableCell className="font-medium">{bike.name}</TableCell>
+                            <TableCell>{bike.brand}</TableCell>
+                            <TableCell className="capitalize">{bike.type} {bike.size || ""}</TableCell>
+                            <TableCell>{bike.maintenance.length}</TableCell>
+                            <TableCell>€{bike.totalMaintenanceCost}</TableCell>
+                            <TableCell className={getProfitabilityColor(profitability)}>
+                              €{profitability.toFixed(0)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={bike.isActive ? "default" : "secondary"}>
+                                {bike.isActive ? "Attiva" : "Non attiva"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="outline" onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedBike(bike);
+                              }}>
+                                Dettagli
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
                        })}
                     </TableBody>
                   </Table>
@@ -485,37 +493,42 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     <SelectItem value="adulto">Adulto</SelectItem>
                     <SelectItem value="bambino">Bambino</SelectItem>
                     <SelectItem value="carrello-porta-bimbi">Carrello Porta Bimbi</SelectItem>
+                    <SelectItem value="trailer">Carrello Separato</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label>Taglia</Label>
-                <Select value={newBike.size} onValueChange={(value: BikeSize) => setNewBike({ ...newBike, size: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="S">S</SelectItem>
-                    <SelectItem value="M">M</SelectItem>
-                    <SelectItem value="L">L</SelectItem>
-                    <SelectItem value="XL">XL</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {newBike.type !== "trailer" && (
+                <div className="space-y-2">
+                  <Label>Taglia</Label>
+                  <Select value={newBike.size} onValueChange={(value: BikeSize) => setNewBike({ ...newBike, size: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="S">S</SelectItem>
+                      <SelectItem value="M">M</SelectItem>
+                      <SelectItem value="L">L</SelectItem>
+                      <SelectItem value="XL">XL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
-              <div className="space-y-2">
-                <Label>Sospensioni</Label>
-                <Select value={newBike.suspension} onValueChange={(value: BikeSuspension) => setNewBike({ ...newBike, suspension: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="front-only">Solo Davanti</SelectItem>
-                    <SelectItem value="full-suspension">Full Suspension</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {newBike.type !== "trailer" && (
+                <div className="space-y-2">
+                  <Label>Sospensioni</Label>
+                  <Select value={newBike.suspension} onValueChange={(value: BikeSuspension) => setNewBike({ ...newBike, suspension: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="front-only">Solo Davanti</SelectItem>
+                      <SelectItem value="full-suspension">Full Suspension</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -529,27 +542,29 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minHeight">Altezza Minima (cm)</Label>
-                <Input
-                  id="minHeight"
-                  type="number"
-                  value={newBike.minHeight}
-                  onChange={(e) => setNewBike({ ...newBike, minHeight: parseInt(e.target.value) || 150 })}
-                />
+            {newBike.type !== "trailer" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minHeight">Altezza Minima (cm)</Label>
+                  <Input
+                    id="minHeight"
+                    type="number"
+                    value={newBike.minHeight}
+                    onChange={(e) => setNewBike({ ...newBike, minHeight: parseInt(e.target.value) || 150 })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="maxHeight">Altezza Massima (cm)</Label>
+                  <Input
+                    id="maxHeight"
+                    type="number"
+                    value={newBike.maxHeight}
+                    onChange={(e) => setNewBike({ ...newBike, maxHeight: parseInt(e.target.value) || 190 })}
+                  />
+                </div>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="maxHeight">Altezza Massima (cm)</Label>
-                <Input
-                  id="maxHeight"
-                  type="number"
-                  value={newBike.maxHeight}
-                  onChange={(e) => setNewBike({ ...newBike, maxHeight: parseInt(e.target.value) || 190 })}
-                />
-              </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -893,6 +908,101 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                 Salva Manutenzione
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cost Details Dialog */}
+      <Dialog open={showCostDetails} onOpenChange={setShowCostDetails}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Dettaglio Costi - {selectedBike?.name}</DialogTitle>
+            <DialogDescription>
+              Breakdown completo di tutti i costi sostenuti
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedBike && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Costo Iniziale</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold">
+                    €{selectedBike.purchasePrice || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Prezzo d'acquisto
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Costi Manutenzione</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold mb-3">
+                    €{selectedBike.totalMaintenanceCost}
+                  </div>
+                  
+                  {selectedBike.maintenance.length > 0 ? (
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {selectedBike.maintenance.map((maintenance) => (
+                        <div key={maintenance.id} className="flex justify-between items-center p-2 bg-muted/50 rounded text-xs">
+                          <div>
+                            <div className="font-medium">{maintenance.type}</div>
+                            <div className="text-muted-foreground">
+                              {new Date(maintenance.date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="font-bold">€{maintenance.cost}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Nessuna manutenzione registrata
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Totale Investimento</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl font-bold text-primary">
+                    €{(selectedBike.purchasePrice || 0) + selectedBike.totalMaintenanceCost}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Costo complessivo sostenuto
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Profittabilità Stimata</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-xl font-bold ${getProfitabilityColor(calculateProfitability(selectedBike))}`}>
+                    €{calculateProfitability(selectedBike).toFixed(0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Guadagno stimato basato su utilizzo
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setShowCostDetails(false)}>
+              Chiudi
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
