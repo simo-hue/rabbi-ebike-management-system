@@ -1,4 +1,4 @@
-export type BikeType = "bambino" | "adulto";
+export type BikeType = "bambino" | "adulto" | "carrello-porta-bimbi";
 export type BikeSize = "S" | "M" | "L" | "XL";
 export type BikeSuspension = "full-suspension" | "front-only";
 
@@ -38,4 +38,11 @@ export type BikeDetails = {
   size: BikeSize;
   suspension: BikeSuspension;
   count: number;
+};
+
+// For booking form - customer height and bike suggestions
+export type CustomerInfo = {
+  name: string;
+  height: number; // in cm
+  suggestedBikes: string[]; // bike IDs that fit this customer
 };

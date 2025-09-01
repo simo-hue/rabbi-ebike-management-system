@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, EuroIcon, UsersIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, EuroIcon, UsersIcon, PlusIcon, MinusIcon, XIcon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Booking, ShopSettings, BikeDetails, BookingCategory } from "./Dashboard";
@@ -35,8 +35,12 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   });
 
   const [selectedBikes, setSelectedBikes] = useState<BikeDetails[]>(editingBooking?.bikeDetails || []);
+  const [customers, setCustomers] = useState<{ name: string; height: number }[]>(
+    editingBooking?.customers || [{ name: "", height: 0 }]
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const calculateEstimatedPrice = () => {
     if (selectedBikes.length === 0) return 0;
@@ -83,6 +87,32 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
     }
   }, [formData.category, settings.openingTime, settings.closingTime]);
 
+  const getSuggestedBikes = (customerHeight: number) => {
+    if (customerHeight === 0) return [];
+    
+    return settings.bikes.filter(bike => 
+      bike.isActive && 
+      customerHeight >= bike.minHeight && 
+      customerHeight <= bike.maxHeight
+    );
+  };
+
+  const addCustomer = () => {
+    setCustomers([...customers, { name: "", height: 0 }]);
+  };
+
+  const removeCustomer = (index: number) => {
+    if (customers.length > 1) {
+      setCustomers(customers.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateCustomer = (index: number, field: 'name' | 'height', value: string | number) => {
+    const updated = [...customers];
+    updated[index] = { ...updated[index], [field]: value };
+    setCustomers(updated);
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -102,6 +132,12 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
       newErrors.time = "L'orario di fine deve essere dopo quello di inizio";
     }
 
+    // Validate customers
+    const validCustomers = customers.filter(c => c.name.trim() !== "");
+    if (validCustomers.length === 0) {
+      newErrors.customers = "Inserire almeno un cliente con nome";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -114,6 +150,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
     onSubmit({
       ...formData,
       bikeDetails: selectedBikes,
+      customers: customers.filter(c => c.name.trim() !== ""),
       date: selectedDate,
       email: formData.email || undefined
     });
@@ -137,7 +174,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <div className="w-8 h-8 bg-gradient-to-r from-electric-green to-electric-green-light rounded-lg flex items-center justify-center">
@@ -216,6 +253,96 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
             />
           </div>
 
+          {/* Customers Heights */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <UsersIcon className="w-4 h-4" />
+                Clienti e Altezze
+              </Label>
+              <Button type="button" variant="outline" size="sm" onClick={addCustomer}>
+                <PlusIcon className="w-4 h-4 mr-1" />
+                Aggiungi Cliente
+              </Button>
+            </div>
+            
+            {customers.map((customer, index) => (
+              <div key={index} className="flex gap-2 items-end">
+                <div className="flex-1 space-y-2">
+                  <Label>Nome Cliente {index + 1}</Label>
+                  <Input
+                    value={customer.name}
+                    onChange={(e) => updateCustomer(index, 'name', e.target.value)}
+                    placeholder="Nome cliente"
+                  />
+                </div>
+                <div className="w-32 space-y-2">
+                  <Label>Altezza (cm)</Label>
+                  <Input
+                    type="number"
+                    min="100"
+                    max="220"
+                    value={customer.height || ""}
+                    onChange={(e) => updateCustomer(index, 'height', parseInt(e.target.value) || 0)}
+                    placeholder="170"
+                  />
+                </div>
+                {customer.height > 0 && (
+                  <div className="w-32">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSuggestions(!showSuggestions)}
+                    >
+                      Suggerimenti
+                    </Button>
+                  </div>
+                )}
+                {customers.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeCustomer(index)}
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            
+            {errors.customers && (
+              <p className="text-sm text-destructive">{errors.customers}</p>
+            )}
+
+            {/* Bike Suggestions */}
+            {showSuggestions && customers.some(c => c.height > 0) && (
+              <Card className="bg-muted/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Bici Consigliate per Altezza</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {customers.filter(c => c.height > 0).map((customer, index) => (
+                    <div key={index}>
+                      <p className="font-medium text-sm">{customer.name} ({customer.height}cm):</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {getSuggestedBikes(customer.height).map((bike) => (
+                          <Badge key={bike.id} variant="secondary" className="text-xs">
+                            {bike.name} ({bike.type} {bike.size})
+                          </Badge>
+                        ))}
+                        {getSuggestedBikes(customer.height).length === 0 && (
+                          <span className="text-sm text-muted-foreground">Nessuna bici disponibile per questa altezza</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
           {/* Booking Category */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
@@ -250,7 +377,6 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
           {/* Time Selection */}
           {formData.category === "hourly" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
               <div className="space-y-2">
                 <Label htmlFor="startTime" className="flex items-center gap-2">
                   <ClockIcon className="w-4 h-4" />

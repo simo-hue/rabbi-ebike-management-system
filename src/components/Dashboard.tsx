@@ -28,6 +28,7 @@ export type Booking = {
   phone: string;
   email?: string;
   bikeDetails: BikeDetails[];
+  customers: { name: string; height: number }[]; // Track customer heights
   startTime: string;
   endTime: string;
   date: Date;
@@ -238,7 +239,7 @@ export const Dashboard = () => {
           (startTime <= booking.startTime && endTime >= booking.endTime)))
     );
     
-    // Calculate booked bikes by type
+    // Calculate booked bikes by type from garage bikes
     const bookedByType: Record<string, number> = {};
     dayBookings.forEach(booking => {
       booking.bikeDetails.forEach(bike => {
@@ -247,8 +248,23 @@ export const Dashboard = () => {
       });
     });
     
+    // Group garage bikes by type/size/suspension and count available
+    const bikeGroups: Record<string, BikeDetails> = {};
+    settings.bikes.filter(bike => bike.isActive).forEach(bike => {
+      const key = `${bike.type}-${bike.size}-${bike.suspension}`;
+      if (!bikeGroups[key]) {
+        bikeGroups[key] = {
+          type: bike.type,
+          size: bike.size,
+          suspension: bike.suspension,
+          count: 0
+        };
+      }
+      bikeGroups[key].count++;
+    });
+    
     // Calculate available bikes
-    return settings.totalBikes.map(bike => {
+    return Object.values(bikeGroups).map(bike => {
       const key = `${bike.type}-${bike.size}-${bike.suspension}`;
       const booked = bookedByType[key] || 0;
       return {
@@ -361,7 +377,7 @@ export const Dashboard = () => {
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Bici Totali</span>
-                    <Badge variant="secondary">{settings.totalBikes.reduce((sum, bike) => sum + bike.count, 0)}</Badge>
+                    <Badge variant="secondary">{settings.bikes.filter(bike => bike.isActive).length}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Disponibili Oggi</span>

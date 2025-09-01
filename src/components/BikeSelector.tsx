@@ -16,6 +16,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
     switch (type) {
       case "bambino": return "Bambino";
       case "adulto": return "Adulto";
+      case "carrello-porta-bimbi": return "Carrello Porta Bimbi";
       default: return type;
     }
   };

@@ -383,36 +383,45 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Marca</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Manutenzioni</TableHead>
-                        <TableHead>Costo Manutenzioni</TableHead>
-                        <TableHead>Profittabilità</TableHead>
-                        <TableHead>Stato</TableHead>
+                         <TableHead>Nome</TableHead>
+                         <TableHead>Marca</TableHead>
+                         <TableHead>Tipo</TableHead>
+                         <TableHead>Manutenzioni</TableHead>
+                         <TableHead>Costo Manutenzioni</TableHead>
+                         <TableHead>Profittabilità</TableHead>
+                         <TableHead>Stato</TableHead>
+                         <TableHead>Azioni</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {bikes.map((bike) => {
-                        const profitability = calculateProfitability(bike);
-                        return (
-                          <TableRow key={bike.id}>
-                            <TableCell className="font-medium">{bike.name}</TableCell>
-                            <TableCell>{bike.brand}</TableCell>
-                            <TableCell className="capitalize">{bike.type} {bike.size}</TableCell>
-                            <TableCell>{bike.maintenance.length}</TableCell>
-                            <TableCell>€{bike.totalMaintenanceCost}</TableCell>
-                            <TableCell className={getProfitabilityColor(profitability)}>
-                              €{profitability.toFixed(0)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={bike.isActive ? "default" : "secondary"}>
-                                {bike.isActive ? "Attiva" : "Non attiva"}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                       {bikes.map((bike) => {
+                         const profitability = calculateProfitability(bike);
+                         return (
+                           <TableRow key={bike.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedBike(bike)}>
+                             <TableCell className="font-medium">{bike.name}</TableCell>
+                             <TableCell>{bike.brand}</TableCell>
+                             <TableCell className="capitalize">{bike.type} {bike.size}</TableCell>
+                             <TableCell>{bike.maintenance.length}</TableCell>
+                             <TableCell>€{bike.totalMaintenanceCost}</TableCell>
+                             <TableCell className={getProfitabilityColor(profitability)}>
+                               €{profitability.toFixed(0)}
+                             </TableCell>
+                             <TableCell>
+                               <Badge variant={bike.isActive ? "default" : "secondary"}>
+                                 {bike.isActive ? "Attiva" : "Non attiva"}
+                               </Badge>
+                             </TableCell>
+                             <TableCell>
+                               <Button size="sm" variant="outline" onClick={(e) => {
+                                 e.stopPropagation();
+                                 setSelectedBike(bike);
+                               }}>
+                                 Dettagli
+                               </Button>
+                             </TableCell>
+                           </TableRow>
+                         );
+                       })}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -475,6 +484,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                   <SelectContent>
                     <SelectItem value="adulto">Adulto</SelectItem>
                     <SelectItem value="bambino">Bambino</SelectItem>
+                    <SelectItem value="carrello-porta-bimbi">Carrello Porta Bimbi</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -742,22 +752,36 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
 
               <TabsContent value="stats" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Costo Totale</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        €{(selectedBike.purchasePrice || 0) + selectedBike.totalMaintenanceCost}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Costo Totale</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      €{(selectedBike.purchasePrice || 0) + selectedBike.totalMaintenanceCost}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Acquisto: €{selectedBike.purchasePrice || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Manutenzioni: €{selectedBike.totalMaintenanceCost}
+                    </p>
+                    <div className="mt-2 space-y-1">
+                      <h4 className="text-xs font-medium">Dettaglio Costi Manutenzione:</h4>
+                      <div className="max-h-20 overflow-y-auto text-xs space-y-1">
+                        {selectedBike.maintenance.map((m) => (
+                          <div key={m.id} className="flex justify-between">
+                            <span>{m.type}</span>
+                            <span>€{m.cost}</span>
+                          </div>
+                        ))}
+                        {selectedBike.maintenance.length === 0 && (
+                          <span className="text-muted-foreground">Nessuna manutenzione registrata</span>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Acquisto: €{selectedBike.purchasePrice || 0}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Manutenzioni: €{selectedBike.totalMaintenanceCost}
-                      </p>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </CardContent>
+                </Card>
 
                   <Card>
                     <CardHeader>
