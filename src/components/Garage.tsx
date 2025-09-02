@@ -538,9 +538,14 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       <Dialog open={isAddingBike} onOpenChange={setIsAddingBike}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Aggiungi Nuova Bicicletta</DialogTitle>
+            <DialogTitle>
+              {newBike.type === "trailer" ? "Aggiungi Nuovo Carrello" : "Aggiungi Nuova Bicicletta"}
+            </DialogTitle>
             <DialogDescription>
-              Inserisci i dettagli della nuova bicicletta
+              {newBike.type === "trailer" 
+                ? "Inserisci i dettagli del nuovo carrello"
+                : "Inserisci i dettagli della nuova bicicletta"
+              }
             </DialogDescription>
           </DialogHeader>
           
@@ -585,9 +590,6 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="adulto">Adulto</SelectItem>
-                    <SelectItem value="bambino">Bambino</SelectItem>
-                    <SelectItem value="carrello-porta-bimbi">Carrello Porta Bimbi</SelectItem>
                     <SelectItem value="trailer">Carrello Separato</SelectItem>
                   </SelectContent>
                 </Select>
@@ -698,7 +700,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               </Button>
               <Button onClick={handleAddBike}>
                 <SaveIcon className="w-4 h-4 mr-2" />
-                Salva Bicicletta
+                {newBike.type === "trailer" ? "Salva Carrello" : "Salva Bicicletta"}
               </Button>
             </div>
           </div>

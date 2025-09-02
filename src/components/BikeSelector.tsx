@@ -14,9 +14,7 @@ interface BikeSelectorProps {
 export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange }: BikeSelectorProps) => {
   const getBikeTypeLabel = (type: string) => {
     switch (type) {
-      case "bambino": return "Bambino";
-      case "adulto": return "Adulto";
-      case "carrello-porta-bimbi": return "Carrello Porta Bimbi";
+      case "trailer": return "Carrello";
       default: return type;
     }
   };
@@ -48,96 +46,124 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
     onSelectionChange(updated);
   };
 
-  if (availableBikes.length === 0) {
-    return (
-      <Card className="border-destructive/50">
-        <CardContent className="pt-4">
-          <p className="text-center text-muted-foreground">Nessuna bici disponibile per questo orario</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Separa bici e carrelli
+  const bikes = availableBikes.filter(bike => bike.type !== "trailer");
+  const trailers = availableBikes.filter(bike => bike.type === "trailer");
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BikeIcon className="w-5 h-5 text-electric-green" />
-          Seleziona Bici Disponibili
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {availableBikes.map((bike, index) => {
-          const selectedCount = getSelectedCount(bike);
-          return (
-            <div
-              key={`${bike.type}-${bike.size}-${bike.suspension}-${index}`}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline" className="text-xs">
-                    {getBikeTypeLabel(bike.type)}
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    Taglia {bike.size}
-                  </Badge>
-                  <Badge 
-                    variant="outline" 
-                    className={bike.suspension === "full-suspension" ? "border-electric-green text-electric-green" : ""}
-                  >
-                    {getSuspensionLabel(bike.suspension)}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Disponibili: {bike.count}
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateSelection(bike, Math.max(0, selectedCount - 1))}
-                  disabled={selectedCount === 0}
-                  className="h-8 w-8 p-0"
-                >
-                  <MinusIcon className="w-4 h-4" />
-                </Button>
-                
-                <span className="w-8 text-center font-medium">
-                  {selectedCount}
-                </span>
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateSelection(bike, Math.min(bike.count, selectedCount + 1))}
-                  disabled={selectedCount >= bike.count}
-                  className="h-8 w-8 p-0"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-        
-        {selectedBikes.length > 0 && (
-          <div className="pt-3 border-t">
-            <h4 className="font-medium mb-2">Riepilogo Selezione:</h4>
-            <div className="space-y-1">
-              {selectedBikes.map((bike, index) => (
-                <div key={index} className="text-sm text-muted-foreground">
-                  {bike.count}x {getBikeTypeLabel(bike.type)} {bike.size} ({getSuspensionLabel(bike.suspension)})
-                </div>
-              ))}
-            </div>
+    <div className="space-y-6">
+      {/* Sezione Biciclette */}
+      {bikes.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Biciclette Disponibili</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {bikes.map((bike, index) => {
+              const selectedCount = getSelectedCount(bike);
+              return (
+                <Card key={index} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <BikeIcon className="w-5 h-5" />
+                      {getBikeTypeLabel(bike.type)}
+                    </CardTitle>
+                    <div className="space-y-1">
+                      <Badge variant="outline">Taglia {bike.size}</Badge>
+                      <Badge variant="secondary">{getSuspensionLabel(bike.suspension)}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span>Disponibili:</span>
+                      <Badge variant="default">{bike.count}</Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Selezionata:</span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateSelection(bike, Math.max(0, selectedCount - 1))}
+                          disabled={selectedCount === 0}
+                        >
+                          <MinusIcon className="w-3 h-3" />
+                        </Button>
+                        <span className="min-w-[2ch] text-center">{selectedCount}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateSelection(bike, Math.min(bike.count, selectedCount + 1))}
+                          disabled={selectedCount >= bike.count}
+                        >
+                          <PlusIcon className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+
+      {/* Sezione Carrelli */}
+      {trailers.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Carrelli Disponibili</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {trailers.map((trailer, index) => {
+              const selectedCount = getSelectedCount(trailer);
+              return (
+                <Card key={index} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <BikeIcon className="w-5 h-5" />
+                      Carrello
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span>Disponibili:</span>
+                      <Badge variant="default">{trailer.count}</Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Selezionata:</span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateSelection(trailer, Math.max(0, selectedCount - 1))}
+                          disabled={selectedCount === 0}
+                        >
+                          <MinusIcon className="w-3 h-3" />
+                        </Button>
+                        <span className="min-w-[2ch] text-center">{selectedCount}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateSelection(trailer, Math.min(trailer.count, selectedCount + 1))}
+                          disabled={selectedCount >= trailer.count}
+                        >
+                          <PlusIcon className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {bikes.length === 0 && trailers.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <BikeIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>Nessuna bicicletta o carrello disponibile per le date selezionate</p>
+        </div>
+      )}
+    </div>
   );
 };
