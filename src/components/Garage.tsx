@@ -410,6 +410,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                 })}
               </div>
             </div>
+          </div>
           ) : (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold">Statistiche Garage</h3>
