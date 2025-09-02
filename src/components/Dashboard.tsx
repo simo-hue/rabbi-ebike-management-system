@@ -383,12 +383,22 @@ export const Dashboard = () => {
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Bici Totali</span>
-                    <Badge variant="secondary">{settings.bikes.filter(bike => bike.isActive).length}</Badge>
+                    <Badge variant="secondary">{settings.bikes.filter(bike => bike.isActive && bike.type !== "trailer").length}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Disponibili Oggi</span>
+                    <span className="text-sm text-muted-foreground">Carrelli Totali</span>
+                    <Badge variant="secondary">{settings.bikes.filter(bike => bike.isActive && bike.type === "trailer").length}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Bici Disponibili Oggi</span>
                     <Badge className="bg-available text-white">
-                      {getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").reduce((sum, bike) => sum + bike.count, 0)}
+                      {getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type !== "trailer").reduce((sum, bike) => sum + bike.count, 0)}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Carrelli Disponibili Oggi</span>
+                    <Badge className="bg-available text-white">
+                      {getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type === "trailer").reduce((sum, bike) => sum + bike.count, 0)}
                     </Badge>
                   </div>
                 </div>

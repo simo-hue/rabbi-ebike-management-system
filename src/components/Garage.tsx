@@ -36,6 +36,7 @@ interface GarageProps {
 export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
   const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
   const [isAddingBike, setIsAddingBike] = useState(false);
+  const [isAddingTrailer, setIsAddingTrailer] = useState(false);
   const [isAddingMaintenance, setIsAddingMaintenance] = useState(false);
   const [view, setView] = useState<"list" | "stats">("list");
   const [showCostDetails, setShowCostDetails] = useState(false);
@@ -51,6 +52,17 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     description: "",
     minHeight: 150,
     maxHeight: 190,
+    isActive: true,
+    maintenance: [],
+    totalMaintenanceCost: 0
+  });
+
+  const [newTrailer, setNewTrailer] = useState<Partial<Bike>>({
+    name: "",
+    brand: "",
+    model: "",
+    type: "trailer",
+    description: "",
     isActive: true,
     maintenance: [],
     totalMaintenanceCost: 0
@@ -112,6 +124,49 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     toast({
       title: "Successo",
       description: "Bicicletta aggiunta con successo"
+    });
+  };
+
+  const handleAddTrailer = () => {
+    if (!newTrailer.name || !newTrailer.brand) {
+      toast({
+        title: "Errore",
+        description: "Nome e marca sono obbligatori",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const trailer: Bike = {
+      id: Date.now().toString(),
+      name: newTrailer.name!,
+      brand: newTrailer.brand!,
+      model: newTrailer.model || "",
+      type: "trailer",
+      description: newTrailer.description!,
+      purchaseDate: newTrailer.purchaseDate,
+      purchasePrice: newTrailer.purchasePrice,
+      isActive: newTrailer.isActive!,
+      maintenance: [],
+      totalMaintenanceCost: 0
+    };
+
+    onUpdateBikes([...bikes, trailer]);
+    setNewTrailer({
+      name: "",
+      brand: "",
+      model: "",
+      type: "trailer",
+      description: "",
+      isActive: true,
+      maintenance: [],
+      totalMaintenanceCost: 0
+    });
+    setIsAddingTrailer(false);
+
+    toast({
+      title: "Successo",
+      description: "Carrello aggiunto con successo"
     });
   };
 
@@ -323,13 +378,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold">Carrelli ({bikes.filter(bike => bike.type === "trailer").length})</h3>
-                  <Button onClick={() => {
-                    setNewBike({
-                      ...newBike,
-                      type: "trailer"
-                    });
-                    setIsAddingBike(true);
-                  }}>
+                  <Button onClick={() => setIsAddingTrailer(true)}>
                     <PlusIcon className="w-4 h-4 mr-2" />
                     Aggiungi Carrello
                   </Button>
@@ -415,15 +464,27 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
             <div className="space-y-6">
               <h3 className="text-lg font-semibold">Statistiche Garage</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Totale Bici</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{bikes.length}</div>
+                    <div className="text-2xl font-bold">{bikes.filter(bike => bike.type !== "trailer").length}</div>
                     <p className="text-xs text-muted-foreground">
-                      {bikes.filter(b => b.isActive).length} attive
+                      {bikes.filter(b => b.isActive && b.type !== "trailer").length} attive
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Totale Carrelli</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{bikes.filter(bike => bike.type === "trailer").length}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {bikes.filter(b => b.isActive && b.type === "trailer").length} attivi
                     </p>
                   </CardContent>
                 </Card>
@@ -590,7 +651,8 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="trailer">Carrello Separato</SelectItem>
+                    <SelectItem value="adulto">Adulto</SelectItem>
+                    <SelectItem value="bambino">Bambino</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1100,6 +1162,104 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
             <Button variant="outline" onClick={() => setShowCostDetails(false)}>
               Chiudi
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Trailer Dialog */}
+      <Dialog open={isAddingTrailer} onOpenChange={setIsAddingTrailer}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Aggiungi Nuovo Carrello</DialogTitle>
+            <DialogDescription>
+              Inserisci i dettagli del nuovo carrello
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="trailerName">Nome *</Label>
+                <Input
+                  id="trailerName"
+                  value={newTrailer.name}
+                  onChange={(e) => setNewTrailer({ ...newTrailer, name: e.target.value })}
+                  placeholder="Es. Carrello Porta Bambini"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="trailerBrand">Marca *</Label>
+                <Input
+                  id="trailerBrand"
+                  value={newTrailer.brand}
+                  onChange={(e) => setNewTrailer({ ...newTrailer, brand: e.target.value })}
+                  placeholder="Es. Thule, Burley, etc."
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="trailerModel">Modello</Label>
+              <Input
+                id="trailerModel"
+                value={newTrailer.model}
+                onChange={(e) => setNewTrailer({ ...newTrailer, model: e.target.value })}
+                placeholder="Es. D'Lite X"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="trailerDescription">Descrizione</Label>
+              <Textarea
+                id="trailerDescription"
+                value={newTrailer.description}
+                onChange={(e) => setNewTrailer({ ...newTrailer, description: e.target.value })}
+                placeholder="Descrizione dettagliata del carrello..."
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="trailerPurchaseDate">Data Acquisto</Label>
+                <Input
+                  id="trailerPurchaseDate"
+                  type="date"
+                  onChange={(e) => setNewTrailer({ ...newTrailer, purchaseDate: e.target.value ? new Date(e.target.value) : undefined })}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="trailerPurchasePrice">Prezzo Acquisto (€)</Label>
+                <Input
+                  id="trailerPurchasePrice"
+                  type="number"
+                  step="0.01"
+                  value={newTrailer.purchasePrice || ""}
+                  onChange={(e) => setNewTrailer({ ...newTrailer, purchasePrice: parseFloat(e.target.value) || undefined })}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="trailerActive"
+                checked={newTrailer.isActive}
+                onCheckedChange={(checked) => setNewTrailer({ ...newTrailer, isActive: checked })}
+              />
+              <Label htmlFor="trailerActive">Carrello attivo</Label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsAddingTrailer(false)}>
+                Annulla
+              </Button>
+              <Button onClick={handleAddTrailer}>
+                <SaveIcon className="w-4 h-4 mr-2" />
+                Salva Carrello
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
