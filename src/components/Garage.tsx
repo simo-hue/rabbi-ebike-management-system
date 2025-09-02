@@ -233,16 +233,110 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
           {view === "list" ? (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Biciclette ({bikes.length})</h3>
-                <Button onClick={() => setIsAddingBike(true)}>
-                  <PlusIcon className="w-4 h-4 mr-2" />
-                  Aggiungi Bici
-                </Button>
+              {/* Sezione Biciclette */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Biciclette ({bikes.filter(bike => bike.type !== "trailer").length})</h3>
+                  <Button onClick={() => setIsAddingBike(true)}>
+                    <PlusIcon className="w-4 h-4 mr-2" />
+                    Aggiungi Bici
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {bikes.filter(bike => bike.type !== "trailer").map((bike) => {
+                    const profitability = calculateProfitability(bike);
+                    return (
+                      <Card key={bike.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-lg">{bike.name}</CardTitle>
+                              <CardDescription>{bike.brand} {bike.model}</CardDescription>
+                            </div>
+                            <Badge variant={bike.isActive ? "default" : "secondary"}>
+                              {bike.isActive ? "Attiva" : "Non attiva"}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Tipo:</span>
+                            <span className="capitalize">{bike.type}</span>
+                          </div>
+                          {bike.size && (
+                            <div className="flex justify-between text-sm">
+                              <span>Taglia:</span>
+                              <span>{bike.size}</span>
+                            </div>
+                          )}
+                          {bike.minHeight && bike.maxHeight && (
+                            <div className="flex justify-between text-sm">
+                              <span>Altezza:</span>
+                              <span>{bike.minHeight}-{bike.maxHeight}cm</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-sm">
+                            <span>Manutenzioni:</span>
+                            <span>{bike.maintenance.length}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Costo manutenzioni:</span>
+                            <span>€{bike.totalMaintenanceCost}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Profittabilità stimata:</span>
+                            <span className={getProfitabilityColor(profitability)}>
+                              €{profitability.toFixed(0)}
+                            </span>
+                          </div>
+                          <Separator />
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setSelectedBike(bike)}
+                              className="flex-1"
+                            >
+                              <EditIcon className="w-3 h-3 mr-1" />
+                              Dettagli
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedBike(bike);
+                                setIsAddingMaintenance(true);
+                              }}
+                            >
+                              <WrenchIcon className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {bikes.map((bike) => {
+              {/* Sezione Carrelli */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Carrelli ({bikes.filter(bike => bike.type === "trailer").length})</h3>
+                  <Button onClick={() => {
+                    setNewBike({
+                      ...newBike,
+                      type: "trailer"
+                    });
+                    setIsAddingBike(true);
+                  }}>
+                    <PlusIcon className="w-4 h-4 mr-2" />
+                    Aggiungi Carrello
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {bikes.filter(bike => bike.type === "trailer").map((bike) => {
                   const profitability = calculateProfitability(bike);
                   return (
                     <Card key={bike.id} className="cursor-pointer hover:shadow-md transition-shadow">
