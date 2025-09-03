@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, SettingsIcon, PlusIcon, BikeIcon, BarChart3Icon } from "lucide-react";
+import rabbiEbikeLogo from "@/assets/rabbi-ebike-logo.png";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { BookingForm } from "./BookingForm";
