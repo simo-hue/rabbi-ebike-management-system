@@ -382,26 +382,39 @@ export const Dashboard = () => {
                 
                 {/* Quick Stats */}
                 <div className="mt-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Bici Totali</span>
-                    <Badge variant="secondary">{settings.bikes.filter(bike => bike.isActive && bike.type !== "trailer").length}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Carrelli Totali</span>
-                    <Badge variant="secondary">{settings.bikes.filter(bike => bike.isActive && bike.type === "trailer").length}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Bici Disponibili Oggi</span>
-                    <Badge className="bg-available text-white">
-                      {getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type !== "trailer").reduce((sum, bike) => sum + bike.count, 0)}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Carrelli Disponibili Oggi</span>
-                    <Badge className="bg-available text-white">
-                      {getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type === "trailer").reduce((sum, bike) => sum + bike.count, 0)}
-                    </Badge>
-                  </div>
+                  {(() => {
+                    const availableBikes = getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type !== "trailer").reduce((sum, bike) => sum + bike.count, 0);
+                    const totalBikes = settings.bikes.filter(bike => bike.isActive && bike.type !== "trailer").length;
+                    const bikePercentage = totalBikes > 0 ? availableBikes / totalBikes : 0;
+                    
+                    const availableTrailers = getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type === "trailer").reduce((sum, bike) => sum + bike.count, 0);
+                    const totalTrailers = settings.bikes.filter(bike => bike.isActive && bike.type === "trailer").length;
+                    const trailerPercentage = totalTrailers > 0 ? availableTrailers / totalTrailers : 0;
+                    
+                    const getBadgeColor = (available: number, percentage: number) => {
+                      if (available === 0) return "bg-red-500 text-white";
+                      if (percentage >= 0.8) return "bg-green-500 text-white";
+                      if (percentage >= 0.5) return "bg-yellow-500 text-white";
+                      return "bg-orange-500 text-white";
+                    };
+                    
+                    return (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Bici Disponibili Oggi</span>
+                          <Badge className={getBadgeColor(availableBikes, bikePercentage)}>
+                            {availableBikes}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Carrelli Disponibili Oggi</span>
+                          <Badge className={getBadgeColor(availableTrailers, trailerPercentage)}>
+                            {availableTrailers}
+                          </Badge>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </CardContent>
             </Card>
