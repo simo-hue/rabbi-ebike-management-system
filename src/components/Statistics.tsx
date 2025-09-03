@@ -12,7 +12,8 @@ import {
   UserIcon,
   CalendarDaysIcon,
   ClockIcon,
-  PieChartIcon
+  PieChartIcon,
+  DownloadIcon
 } from "lucide-react";
 import { 
   BarChart, 
