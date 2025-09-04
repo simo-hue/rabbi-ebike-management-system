@@ -42,7 +42,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
   const [showCostDetails, setShowCostDetails] = useState(false);
   const { toast } = useToast();
 
-  const [newBike, setNewBike] = useState<Partial<Bike>>({
+  const [newBike, setNewBike] = useState<Partial<Bike> & { quantity?: number }>({
     name: "",
     brand: "",
     model: "",
@@ -54,10 +54,11 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     maxHeight: 190,
     isActive: true,
     maintenance: [],
-    totalMaintenanceCost: 0
+    totalMaintenanceCost: 0,
+    quantity: 1
   });
 
-  const [newTrailer, setNewTrailer] = useState<Partial<Bike>>({
+  const [newTrailer, setNewTrailer] = useState<Partial<Bike> & { quantity?: number }>({
     name: "",
     brand: "",
     model: "",
@@ -65,7 +66,8 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     description: "",
     isActive: true,
     maintenance: [],
-    totalMaintenanceCost: 0
+    totalMaintenanceCost: 0,
+    quantity: 1
   });
 
   const [newMaintenance, setNewMaintenance] = useState<Partial<MaintenanceRecord>>({
@@ -86,25 +88,31 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       return;
     }
 
-    const bike: Bike = {
-      id: Date.now().toString(),
-      name: newBike.name!,
-      brand: newBike.brand!,
-      model: newBike.model || "",
-      type: newBike.type!,
-      size: newBike.type === "trailer" ? undefined : newBike.size!,
-      suspension: newBike.type === "trailer" ? undefined : newBike.suspension!,
-      description: newBike.description!,
-      minHeight: newBike.type === "trailer" ? undefined : newBike.minHeight!,
-      maxHeight: newBike.type === "trailer" ? undefined : newBike.maxHeight!,
-      purchaseDate: newBike.purchaseDate,
-      purchasePrice: newBike.purchasePrice,
-      isActive: newBike.isActive!,
-      maintenance: [],
-      totalMaintenanceCost: 0
-    };
+    const quantity = newBike.quantity || 1;
+    const newBikes: Bike[] = [];
 
-    onUpdateBikes([...bikes, bike]);
+    for (let i = 0; i < quantity; i++) {
+      const bike: Bike = {
+        id: `${Date.now()}-${i}`,
+        name: quantity > 1 ? `${newBike.name!} #${i + 1}` : newBike.name!,
+        brand: newBike.brand!,
+        model: newBike.model || "",
+        type: newBike.type!,
+        size: newBike.type === "trailer" ? undefined : newBike.size!,
+        suspension: newBike.type === "trailer" ? undefined : newBike.suspension!,
+        description: newBike.description!,
+        minHeight: newBike.type === "trailer" ? undefined : newBike.minHeight!,
+        maxHeight: newBike.type === "trailer" ? undefined : newBike.maxHeight!,
+        purchaseDate: newBike.purchaseDate,
+        purchasePrice: newBike.purchasePrice,
+        isActive: newBike.isActive!,
+        maintenance: [],
+        totalMaintenanceCost: 0
+      };
+      newBikes.push(bike);
+    }
+
+    onUpdateBikes([...bikes, ...newBikes]);
     setNewBike({
       name: "",
       brand: "",
@@ -117,13 +125,14 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       maxHeight: 190,
       isActive: true,
       maintenance: [],
-      totalMaintenanceCost: 0
+      totalMaintenanceCost: 0,
+      quantity: 1
     });
     setIsAddingBike(false);
 
     toast({
       title: "Successo",
-      description: "Bicicletta aggiunta con successo"
+      description: `${quantity > 1 ? `${quantity} biciclette aggiunte` : "Bicicletta aggiunta"} con successo`
     });
   };
 
@@ -137,21 +146,27 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       return;
     }
 
-    const trailer: Bike = {
-      id: Date.now().toString(),
-      name: newTrailer.name!,
-      brand: newTrailer.brand!,
-      model: newTrailer.model || "",
-      type: "trailer",
-      description: newTrailer.description!,
-      purchaseDate: newTrailer.purchaseDate,
-      purchasePrice: newTrailer.purchasePrice,
-      isActive: newTrailer.isActive!,
-      maintenance: [],
-      totalMaintenanceCost: 0
-    };
+    const quantity = newTrailer.quantity || 1;
+    const newTrailers: Bike[] = [];
 
-    onUpdateBikes([...bikes, trailer]);
+    for (let i = 0; i < quantity; i++) {
+      const trailer: Bike = {
+        id: `${Date.now()}-${i}`,
+        name: quantity > 1 ? `${newTrailer.name!} #${i + 1}` : newTrailer.name!,
+        brand: newTrailer.brand!,
+        model: newTrailer.model || "",
+        type: "trailer",
+        description: newTrailer.description!,
+        purchaseDate: newTrailer.purchaseDate,
+        purchasePrice: newTrailer.purchasePrice,
+        isActive: newTrailer.isActive!,
+        maintenance: [],
+        totalMaintenanceCost: 0
+      };
+      newTrailers.push(trailer);
+    }
+
+    onUpdateBikes([...bikes, ...newTrailers]);
     setNewTrailer({
       name: "",
       brand: "",
@@ -160,13 +175,14 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       description: "",
       isActive: true,
       maintenance: [],
-      totalMaintenanceCost: 0
+      totalMaintenanceCost: 0,
+      quantity: 1
     });
     setIsAddingTrailer(false);
 
     toast({
       title: "Successo",
-      description: "Carrello aggiunto con successo"
+      description: `${quantity > 1 ? `${quantity} carrelli aggiunti` : "Carrello aggiunto"} con successo`
     });
   };
 
@@ -747,13 +763,27 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="bikeActive"
-                checked={newBike.isActive}
-                onCheckedChange={(checked) => setNewBike({ ...newBike, isActive: checked })}
-              />
-              <Label htmlFor="bikeActive">Bicicletta attiva</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bikeQuantity">Quantità</Label>
+                <Input
+                  id="bikeQuantity"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={newBike.quantity || 1}
+                  onChange={(e) => setNewBike({ ...newBike, quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2 pt-8">
+                <Switch
+                  id="bikeActive"
+                  checked={newBike.isActive}
+                  onCheckedChange={(checked) => setNewBike({ ...newBike, isActive: checked })}
+                />
+                <Label htmlFor="bikeActive">Attiva</Label>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
@@ -1242,13 +1272,27 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="trailerActive"
-                checked={newTrailer.isActive}
-                onCheckedChange={(checked) => setNewTrailer({ ...newTrailer, isActive: checked })}
-              />
-              <Label htmlFor="trailerActive">Carrello attivo</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="trailerQuantity">Quantità</Label>
+                <Input
+                  id="trailerQuantity"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={newTrailer.quantity || 1}
+                  onChange={(e) => setNewTrailer({ ...newTrailer, quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2 pt-8">
+                <Switch
+                  id="trailerActive"
+                  checked={newTrailer.isActive}
+                  onCheckedChange={(checked) => setNewTrailer({ ...newTrailer, isActive: checked })}
+                />
+                <Label htmlFor="trailerActive">Attivo</Label>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
