@@ -20,6 +20,7 @@ export type Bike = {
   type: BikeType;
   size?: BikeSize; // Optional for trailers
   suspension?: BikeSuspension; // Optional for trailers
+  hasTrailerHook?: boolean; // Optional - only for bikes that can attach trailers
   description: string;
   minHeight?: number; // in cm - Optional for trailers
   maxHeight?: number; // in cm - Optional for trailers
@@ -37,6 +38,7 @@ export type BikeDetails = {
   type: BikeType;
   size: BikeSize;
   suspension: BikeSuspension;
+  hasTrailerHook?: boolean;
   count: number;
 };
 

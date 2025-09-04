@@ -49,6 +49,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     type: "adulto",
     size: "M",
     suspension: "front-only",
+    hasTrailerHook: false,
     description: "",
     minHeight: 150,
     maxHeight: 190,
@@ -100,6 +101,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
         type: newBike.type!,
         size: newBike.type === "trailer" ? undefined : newBike.size!,
         suspension: newBike.type === "trailer" ? undefined : newBike.suspension!,
+        hasTrailerHook: newBike.type === "trailer" ? undefined : newBike.hasTrailerHook,
         description: newBike.description!,
         minHeight: newBike.type === "trailer" ? undefined : newBike.minHeight!,
         maxHeight: newBike.type === "trailer" ? undefined : newBike.maxHeight!,
@@ -120,6 +122,7 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       type: "adulto",
       size: "M",
       suspension: "front-only",
+      hasTrailerHook: false,
       description: "",
       minHeight: 150,
       maxHeight: 190,
@@ -345,6 +348,14 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                             <div className="flex justify-between text-sm">
                               <span>Altezza:</span>
                               <span>{bike.minHeight}-{bike.maxHeight}cm</span>
+                            </div>
+                          )}
+                          {bike.hasTrailerHook !== undefined && (
+                            <div className="flex justify-between text-sm">
+                              <span>Gancio carrello:</span>
+                              <Badge variant={bike.hasTrailerHook ? "default" : "secondary"}>
+                                {bike.hasTrailerHook ? "Sì" : "No"}
+                              </Badge>
                             </div>
                           )}
                           <div className="flex justify-between text-sm">
@@ -785,6 +796,17 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                 <Label htmlFor="bikeActive">Attiva</Label>
               </div>
             </div>
+
+            {newBike.type !== "trailer" && (
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="trailerHook"
+                  checked={newBike.hasTrailerHook || false}
+                  onCheckedChange={(checked) => setNewBike({ ...newBike, hasTrailerHook: checked })}
+                />
+                <Label htmlFor="trailerHook">Gancio per carrello</Label>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setIsAddingBike(false)}>

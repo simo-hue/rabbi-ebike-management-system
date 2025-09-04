@@ -29,14 +29,14 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
 
   const getSelectedCount = (bike: BikeDetails): number => {
     const selected = selectedBikes.find(
-      b => b.type === bike.type && b.size === bike.size && b.suspension === bike.suspension
+      b => b.type === bike.type && b.size === bike.size && b.suspension === bike.suspension && b.hasTrailerHook === bike.hasTrailerHook
     );
     return selected?.count || 0;
   };
 
   const updateSelection = (bike: BikeDetails, newCount: number) => {
     const updated = selectedBikes.filter(
-      b => !(b.type === bike.type && b.size === bike.size && b.suspension === bike.suspension)
+      b => !(b.type === bike.type && b.size === bike.size && b.suspension === bike.suspension && b.hasTrailerHook === bike.hasTrailerHook)
     );
     
     if (newCount > 0) {
@@ -69,6 +69,11 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                     <div className="space-y-1">
                       <Badge variant="outline">Taglia {bike.size}</Badge>
                       <Badge variant="secondary">{getSuspensionLabel(bike.suspension)}</Badge>
+                      {bike.hasTrailerHook !== undefined && (
+                        <Badge variant={bike.hasTrailerHook ? "default" : "outline"}>
+                          {bike.hasTrailerHook ? "Con gancio carrello" : "Senza gancio"}
+                        </Badge>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
