@@ -253,6 +253,50 @@ export const Statistics = ({ bookings, settings, onClose }: StatisticsProps) => 
     }
   };
 
+  const exportToCSV = () => {
+    const csvData = currentBookings.map(booking => {
+      const bikeNames = booking.bikeDetails.map(bike => 
+        `${bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} ${bike.size || ""} ${bike.suspension || ""} ${bike.hasTrailerHook ? "(Gancio carrello)" : ""}`.trim()
+      ).join("; ");
+      
+      return {
+        'Data': format(booking.date, "dd/MM/yyyy", { locale: it }),
+        'Cliente': booking.customerName,
+        'Email': booking.email || "",
+        'Telefono': booking.phone,
+        'Ora Inizio': booking.startTime,
+        'Ora Fine': booking.endTime,
+        'Categoria': booking.category === "hourly" ? "Orario" : booking.category === "half-day" ? "Mezza Giornata" : "Giornata Intera",
+        'Biciclette': bikeNames,
+        'Numero Bici': booking.bikeDetails.reduce((sum, bike) => sum + bike.count, 0),
+        'Con Guida': booking.needsGuide ? "Sì" : "No",
+        'Prezzo Totale': `€${booking.totalPrice}`,
+        'Status': booking.status === "confirmed" ? "Confermata" : booking.status === "cancelled" ? "Cancellata" : "In Attesa"
+      };
+    });
+
+    const headers = Object.keys(csvData[0] || {});
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => 
+        headers.map(header => {
+          const value = row[header as keyof typeof row] || '';
+          return `"${value.toString().replace(/"/g, '""')}"`;
+        }).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `fatturato-${getPeriodLabel(selectedPeriod).toLowerCase().replace(/\s+/g, '-')}-${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-card rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
@@ -266,9 +310,15 @@ export const Statistics = ({ bookings, settings, onClose }: StatisticsProps) => 
               <p className="text-muted-foreground">Analisi completa delle performance</p>
             </div>
           </div>
-          <Button variant="outline" onClick={onClose}>
-            Chiudi
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportToCSV} className="flex items-center gap-2">
+              <DownloadIcon className="w-4 h-4" />
+              Esporta CSV
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              Chiudi
+            </Button>
+          </div>
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
