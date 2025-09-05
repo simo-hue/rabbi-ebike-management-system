@@ -38,6 +38,23 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   const [customers, setCustomers] = useState<{ name: string; height: number }[]>(
     editingBooking?.customers || [{ name: "Persona 1", height: 0 }]
   );
+
+  // Auto-manage customers based on selected bikes
+  useEffect(() => {
+    const totalBikes = selectedBikes.reduce((sum, bike) => sum + bike.count, 0);
+    
+    if (totalBikes > customers.length) {
+      // Add customers if more bikes are selected
+      const newCustomers = [...customers];
+      for (let i = customers.length; i < totalBikes; i++) {
+        newCustomers.push({ name: `Persona ${i + 1}`, height: 0 });
+      }
+      setCustomers(newCustomers);
+    } else if (totalBikes < customers.length && totalBikes > 0) {
+      // Remove excess customers but keep at least one and at least as many as bikes
+      setCustomers(customers.slice(0, Math.max(1, totalBikes)));
+    }
+  }, [selectedBikes]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
