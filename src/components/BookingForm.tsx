@@ -344,18 +344,76 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Bici Consigliate per Altezza</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-4">
                   {customers.filter(c => c.height > 0).map((customer, index) => (
                     <div key={index}>
-                      <p className="font-medium text-sm">{customer.name} ({customer.height}cm):</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {getSuggestedBikes(customer.height).map((bike) => (
-                          <Badge key={bike.id} variant="secondary" className="text-xs">
-                            {bike.name} ({bike.type} {bike.size})
-                          </Badge>
-                        ))}
+                      <p className="font-medium text-sm mb-2">{customer.name} ({customer.height}cm):</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {getSuggestedBikes(customer.height).map((bike) => {
+                          const bikeTypeDetails = availableBikes.find(ab => 
+                            ab.type === bike.type && 
+                            ab.size === bike.size && 
+                            ab.suspension === bike.suspension &&
+                            ab.hasTrailerHook === bike.hasTrailerHook
+                          );
+                          
+                          return (
+                            <div key={bike.id} className="flex items-center justify-between p-2 border rounded-lg bg-background">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{bike.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} {bike.size} {bike.suspension}
+                                  {bike.hasTrailerHook && " (Gancio carrello)"}
+                                </p>
+                                {bikeTypeDetails && (
+                                  <p className="text-xs text-muted-foreground">Disponibili: {bikeTypeDetails.count}</p>
+                                )}
+                              </div>
+                              {bikeTypeDetails && bikeTypeDetails.count > 0 && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const existingBike = selectedBikes.find(sb => 
+                                      sb.type === bike.type && 
+                                      sb.size === bike.size && 
+                                      sb.suspension === bike.suspension &&
+                                      sb.hasTrailerHook === bike.hasTrailerHook
+                                    );
+                                    
+                                    if (existingBike) {
+                                      // Increment existing selection
+                                      setSelectedBikes(selectedBikes.map(sb =>
+                                        sb.type === bike.type && 
+                                        sb.size === bike.size && 
+                                        sb.suspension === bike.suspension &&
+                                        sb.hasTrailerHook === bike.hasTrailerHook
+                                          ? { ...sb, count: Math.min(sb.count + 1, bikeTypeDetails.count) }
+                                          : sb
+                                      ));
+                                    } else {
+                                      // Add new selection
+                                      setSelectedBikes([...selectedBikes, {
+                                        type: bike.type,
+                                        size: bike.size!,
+                                        suspension: bike.suspension!,
+                                        hasTrailerHook: bike.hasTrailerHook,
+                                        count: 1
+                                      }]);
+                                    }
+                                  }}
+                                  className="text-xs"
+                                >
+                                  <PlusIcon className="w-3 h-3 mr-1" />
+                                  Seleziona
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
                         {getSuggestedBikes(customer.height).length === 0 && (
-                          <span className="text-sm text-muted-foreground">Nessuna bici disponibile per questa altezza</span>
+                          <span className="text-sm text-muted-foreground col-span-2">Nessuna bici disponibile per questa altezza</span>
                         )}
                       </div>
                     </div>
