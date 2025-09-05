@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BikeIcon, PlusIcon, MinusIcon } from "lucide-react";
+import { BikeIcon, PlusIcon, MinusIcon, LinkIcon } from "lucide-react";
 import type { BikeDetails } from "./Dashboard";
 
 interface BikeSelectorProps {
@@ -63,9 +63,12 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                 <Card key={index} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <BikeIcon className="w-5 h-5" />
-                      {getBikeTypeLabel(bike.type)}
-                    </CardTitle>
+                       <BikeIcon className="w-5 h-5" />
+                       {getBikeTypeLabel(bike.type)}
+                       {bike.hasTrailerHook && (
+                         <LinkIcon className="w-4 h-4 text-electric-green" />
+                       )}
+                     </CardTitle>
                     <div className="space-y-1">
                       <Badge variant="outline">Taglia {bike.size}</Badge>
                       <Badge variant="secondary">{getSuspensionLabel(bike.suspension)}</Badge>
