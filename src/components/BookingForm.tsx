@@ -107,11 +107,32 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   const getSuggestedBikes = (customerHeight: number) => {
     if (customerHeight === 0) return [];
     
-    return settings.bikes.filter(bike => 
-      bike.isActive && 
-      customerHeight >= bike.minHeight && 
-      customerHeight <= bike.maxHeight
-    );
+    // Filter only from available bikes for this date/time, not all garage bikes
+    return availableBikes.filter(bike => {
+      // Find the corresponding bike details from settings to get height info
+      const bikeDetails = settings.bikes.find(b => 
+        b.type === bike.type && 
+        b.size === bike.size && 
+        b.suspension === bike.suspension &&
+        b.hasTrailerHook === bike.hasTrailerHook
+      );
+      
+      return bikeDetails && 
+             bikeDetails.isActive && 
+             bikeDetails.minHeight && 
+             bikeDetails.maxHeight &&
+             customerHeight >= bikeDetails.minHeight && 
+             customerHeight <= bikeDetails.maxHeight;
+    }).map(bike => {
+      // Return the bike with its settings details
+      const bikeDetails = settings.bikes.find(b => 
+        b.type === bike.type && 
+        b.size === bike.size && 
+        b.suspension === bike.suspension &&
+        b.hasTrailerHook === bike.hasTrailerHook
+      )!;
+      return { ...bikeDetails, availableCount: bike.count };
+    });
   };
 
   const addCustomer = () => {
@@ -348,73 +369,60 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                   {customers.filter(c => c.height > 0).map((customer, index) => (
                     <div key={index}>
                       <p className="font-medium text-sm mb-2">{customer.name} ({customer.height}cm):</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {getSuggestedBikes(customer.height).map((bike) => {
-                          const bikeTypeDetails = availableBikes.find(ab => 
-                            ab.type === bike.type && 
-                            ab.size === bike.size && 
-                            ab.suspension === bike.suspension &&
-                            ab.hasTrailerHook === bike.hasTrailerHook
-                          );
-                          
-                          return (
-                            <div key={bike.id} className="flex items-center justify-between p-2 border rounded-lg bg-background">
-                              <div className="flex-1">
-                                <p className="font-medium text-sm">{bike.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} {bike.size} {bike.suspension}
-                                  {bike.hasTrailerHook && " (Gancio carrello)"}
-                                </p>
-                                {bikeTypeDetails && (
-                                  <p className="text-xs text-muted-foreground">Disponibili: {bikeTypeDetails.count}</p>
-                                )}
-                              </div>
-                              {bikeTypeDetails && bikeTypeDetails.count > 0 && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    const existingBike = selectedBikes.find(sb => 
-                                      sb.type === bike.type && 
-                                      sb.size === bike.size && 
-                                      sb.suspension === bike.suspension &&
-                                      sb.hasTrailerHook === bike.hasTrailerHook
-                                    );
-                                    
-                                    if (existingBike) {
-                                      // Increment existing selection
-                                      setSelectedBikes(selectedBikes.map(sb =>
-                                        sb.type === bike.type && 
-                                        sb.size === bike.size && 
-                                        sb.suspension === bike.suspension &&
-                                        sb.hasTrailerHook === bike.hasTrailerHook
-                                          ? { ...sb, count: Math.min(sb.count + 1, bikeTypeDetails.count) }
-                                          : sb
-                                      ));
-                                    } else {
-                                      // Add new selection
-                                      setSelectedBikes([...selectedBikes, {
-                                        type: bike.type,
-                                        size: bike.size!,
-                                        suspension: bike.suspension!,
-                                        hasTrailerHook: bike.hasTrailerHook,
-                                        count: 1
-                                      }]);
-                                    }
-                                  }}
-                                  className="text-xs"
-                                >
-                                  <PlusIcon className="w-3 h-3 mr-1" />
-                                  Seleziona
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {getSuggestedBikes(customer.height).length === 0 && (
-                          <span className="text-sm text-muted-foreground col-span-2">Nessuna bici disponibile per questa altezza</span>
-                        )}
+                       <div className="space-y-2">
+                         {getSuggestedBikes(customer.height).map((bike) => (
+                           <div key={bike.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
+                             <div className="flex-1">
+                               <p className="font-medium text-sm">{bike.name}</p>
+                               <p className="text-xs text-muted-foreground">
+                                 {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} {bike.size} {bike.suspension}
+                                 {bike.hasTrailerHook && " (Gancio carrello)"}
+                               </p>
+                               <p className="text-xs text-muted-foreground">Disponibili: {bike.availableCount}</p>
+                             </div>
+                             <Button
+                               type="button"
+                               size="sm"
+                               variant="default"
+                               onClick={() => {
+                                 const existingBike = selectedBikes.find(sb => 
+                                   sb.type === bike.type && 
+                                   sb.size === bike.size && 
+                                   sb.suspension === bike.suspension &&
+                                   sb.hasTrailerHook === bike.hasTrailerHook
+                                 );
+                                 
+                                 if (existingBike) {
+                                   // Increment existing selection
+                                   setSelectedBikes(selectedBikes.map(sb =>
+                                     sb.type === bike.type && 
+                                     sb.size === bike.size && 
+                                     sb.suspension === bike.suspension &&
+                                     sb.hasTrailerHook === bike.hasTrailerHook
+                                       ? { ...sb, count: Math.min(sb.count + 1, bike.availableCount) }
+                                       : sb
+                                   ));
+                                 } else {
+                                   // Add new selection
+                                   setSelectedBikes([...selectedBikes, {
+                                     type: bike.type,
+                                     size: bike.size!,
+                                     suspension: bike.suspension!,
+                                     hasTrailerHook: bike.hasTrailerHook,
+                                     count: 1
+                                   }]);
+                                 }
+                               }}
+                               className="bg-electric-green hover:bg-electric-green-dark text-white"
+                             >
+                               <PlusIcon className="w-4 h-4 mr-1" />
+                               Aggiungi
+                             </Button>
+                           </div>
+                         ))}
+                         {getSuggestedBikes(customer.height).length === 0 && (
+                           <p className="text-sm text-muted-foreground">Nessuna bici disponibile per questa altezza</p>
+                         )}
                       </div>
                     </div>
                   ))}
