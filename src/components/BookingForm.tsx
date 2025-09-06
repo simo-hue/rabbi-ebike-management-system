@@ -38,6 +38,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   const [customers, setCustomers] = useState<{ name: string; height: number }[]>(
     editingBooking?.customers || [{ name: "Persona 1", height: 0 }]
   );
+  const [addedSuggestedBikes, setAddedSuggestedBikes] = useState<Set<string>>(new Set());
 
   // Auto-manage customers based on selected bikes
   useEffect(() => {
@@ -385,41 +386,49 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                                </p>
                                <p className="text-xs text-muted-foreground">Disponibili: {bike.availableCount}</p>
                              </div>
-                             <Button
-                               type="button"
-                               size="sm"
-                               variant="default"
-                               onClick={() => {
-                                 const existingBike = selectedBikes.find(sb => 
-                                   sb.type === bike.type && 
-                                   sb.size === bike.size && 
-                                   sb.suspension === bike.suspension &&
-                                   sb.hasTrailerHook === bike.hasTrailerHook
-                                 );
-                                 
-                                 if (existingBike) {
-                                   // Increment existing selection
-                                   setSelectedBikes(selectedBikes.map(sb =>
-                                     sb.type === bike.type && 
-                                     sb.size === bike.size && 
-                                     sb.suspension === bike.suspension &&
-                                     sb.hasTrailerHook === bike.hasTrailerHook
-                                       ? { ...sb, count: Math.min(sb.count + 1, bike.availableCount) }
-                                       : sb
-                                   ));
-                                 } else {
-                                   // Add new selection
-                                   setSelectedBikes([...selectedBikes, {
-                                     type: bike.type,
-                                     size: bike.size!,
-                                     suspension: bike.suspension!,
-                                     hasTrailerHook: bike.hasTrailerHook,
-                                     count: 1
-                                   }]);
-                                 }
-                               }}
-                               className="bg-electric-green hover:bg-electric-green-dark text-white"
-                             >
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  const bikeKey = `${bike.type}-${bike.size}-${bike.suspension}-${bike.hasTrailerHook}`;
+                                  const existingBike = selectedBikes.find(sb => 
+                                    sb.type === bike.type && 
+                                    sb.size === bike.size && 
+                                    sb.suspension === bike.suspension &&
+                                    sb.hasTrailerHook === bike.hasTrailerHook
+                                  );
+                                  
+                                  if (existingBike) {
+                                    // Increment existing selection
+                                    setSelectedBikes(selectedBikes.map(sb =>
+                                      sb.type === bike.type && 
+                                      sb.size === bike.size && 
+                                      sb.suspension === bike.suspension &&
+                                      sb.hasTrailerHook === bike.hasTrailerHook
+                                        ? { ...sb, count: Math.min(sb.count + 1, bike.availableCount) }
+                                        : sb
+                                    ));
+                                  } else {
+                                    // Add new selection
+                                    setSelectedBikes([...selectedBikes, {
+                                      type: bike.type,
+                                      size: bike.size!,
+                                      suspension: bike.suspension!,
+                                      hasTrailerHook: bike.hasTrailerHook,
+                                      count: 1
+                                    }]);
+                                  }
+                                  
+                                  // Add to clicked bikes set for visual feedback
+                                  setAddedSuggestedBikes(prev => new Set([...prev, bikeKey]));
+                                }}
+                                className={`${
+                                  addedSuggestedBikes.has(`${bike.type}-${bike.size}-${bike.suspension}-${bike.hasTrailerHook}`)
+                                    ? "bg-electric-green/50 hover:bg-electric-green/60 text-white/80"
+                                    : "bg-electric-green hover:bg-electric-green-dark text-white"
+                                }`}
+                              >
                                <PlusIcon className="w-4 h-4 mr-1" />
                                Aggiungi
                              </Button>
