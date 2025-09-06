@@ -66,11 +66,14 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                        <BikeIcon className="w-5 h-5" />
                        {getBikeTypeLabel(bike.type)}
                        {bike.hasTrailerHook && (
-                         <img 
-                           src="/lovable-uploads/b5fe5e84-6517-4fb4-a54d-3df62a0fe579.png" 
-                           alt="Gancio carrello" 
-                           className="w-6 h-4 object-contain"
-                         />
+                         <div className="bg-electric-green/20 px-2 py-1 rounded-md flex items-center gap-1">
+                           <img 
+                             src="/lovable-uploads/b5fe5e84-6517-4fb4-a54d-3df62a0fe579.png" 
+                             alt="Gancio carrello" 
+                             className="w-4 h-3 object-contain"
+                           />
+                           <span className="text-xs text-electric-green font-medium">Gancio</span>
+                         </div>
                        )}
                      </CardTitle>
                     <div className="space-y-1">

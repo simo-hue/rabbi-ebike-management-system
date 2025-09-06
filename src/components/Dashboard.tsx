@@ -345,15 +345,16 @@ export const Dashboard = () => {
       });
     });
     
-    // Group garage bikes by type/size/suspension and count available
+    // Group garage bikes by type/size/suspension/hasTrailerHook and count available
     const bikeGroups: Record<string, BikeDetails> = {};
     settings.bikes.filter(bike => bike.isActive).forEach(bike => {
-      const key = `${bike.type}-${bike.size}-${bike.suspension}`;
+      const key = `${bike.type}-${bike.size}-${bike.suspension}-${bike.hasTrailerHook}`;
       if (!bikeGroups[key]) {
         bikeGroups[key] = {
           type: bike.type,
           size: bike.size,
           suspension: bike.suspension,
+          hasTrailerHook: bike.hasTrailerHook,
           count: 0
         };
       }
@@ -362,7 +363,7 @@ export const Dashboard = () => {
     
     // Calculate available bikes
     return Object.values(bikeGroups).map(bike => {
-      const key = `${bike.type}-${bike.size}-${bike.suspension}`;
+      const key = `${bike.type}-${bike.size}-${bike.suspension}-${bike.hasTrailerHook}`;
       const booked = bookedByType[key] || 0;
       return {
         ...bike,
@@ -398,9 +399,11 @@ export const Dashboard = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-electric-green to-electric-green-light rounded-lg">
-                <BikeIcon className="w-6 h-6 text-white" />
-              </div>
+              <img 
+                src="/lovable-uploads/b5fe5e84-6517-4fb4-a54d-3df62a0fe579.png" 
+                alt="Rabbi E-Bike Logo" 
+                className="w-10 h-10 object-contain"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">{settings.shopName}</h1>
                 <p className="text-sm text-muted-foreground">Gestionale Prenotazioni E-Bike</p>

@@ -374,20 +374,22 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                          {getSuggestedBikes(customer.height).map((bike) => (
                            <div key={bike.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-sm">{bike.name}</p>
-                                  {bike.hasTrailerHook && (
-                                    <img 
-                                      src="/lovable-uploads/b5fe5e84-6517-4fb4-a54d-3df62a0fe579.png" 
-                                      alt="Gancio carrello" 
-                                      className="w-6 h-4 object-contain"
-                                    />
-                                  )}
-                                </div>
-                               <p className="text-xs text-muted-foreground">
-                                 {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} {bike.size} {bike.suspension}
-                                 {bike.hasTrailerHook && " (Gancio carrello)"}
-                               </p>
+                               <div className="flex items-center gap-2">
+                                   <p className="font-medium text-sm">{bike.brand} {bike.model}</p>
+                                   {bike.hasTrailerHook && (
+                                     <div className="bg-electric-green/20 px-2 py-1 rounded-md flex items-center gap-1">
+                                       <img 
+                                         src="/lovable-uploads/b5fe5e84-6517-4fb4-a54d-3df62a0fe579.png" 
+                                         alt="Gancio carrello" 
+                                         className="w-4 h-3 object-contain"
+                                       />
+                                       <span className="text-xs text-electric-green font-medium">Gancio</span>
+                                     </div>
+                                   )}
+                                 </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} • Taglia {bike.size} • {bike.suspension === "full-suspension" ? "Full Suspension" : "Solo Davanti"}
+                                </p>
                                <p className="text-xs text-muted-foreground">Disponibili: {bike.availableCount}</p>
                              </div>
                               <Button
