@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BikeIcon, PlusIcon, MinusIcon, LinkIcon } from "lucide-react";
+import { BikeIcon, PlusIcon, MinusIcon, Zap } from "lucide-react";
 import type { BikeDetails } from "./Dashboard";
 
 interface BikeSelectorProps {
@@ -66,7 +66,10 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                        <BikeIcon className="w-5 h-5" />
                        {getBikeTypeLabel(bike.type)}
                        {bike.hasTrailerHook && (
-                         <LinkIcon className="w-4 h-4 text-electric-green" />
+                         <div className="flex items-center gap-1 px-2 py-1 bg-electric-green/20 rounded-md">
+                           <div className="w-3 h-2 border-2 border-electric-green rounded-sm"></div>
+                           <div className="w-1 h-1 bg-electric-green rounded-full"></div>
+                         </div>
                        )}
                      </CardTitle>
                     <div className="space-y-1">

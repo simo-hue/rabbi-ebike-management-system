@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, EuroIcon, UsersIcon, PlusIcon, MinusIcon, XIcon, LinkIcon } from "lucide-react";
+import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, EuroIcon, UsersIcon, PlusIcon, MinusIcon, XIcon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Booking, ShopSettings, BikeDetails, BookingCategory } from "./Dashboard";
@@ -374,12 +374,15 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                          {getSuggestedBikes(customer.height).map((bike) => (
                            <div key={bike.id} className="flex items-center justify-between p-3 border rounded-lg bg-background">
                              <div className="flex-1">
-                               <div className="flex items-center gap-2">
-                                 <p className="font-medium text-sm">{bike.name}</p>
-                                 {bike.hasTrailerHook && (
-                                   <LinkIcon className="w-4 h-4 text-electric-green" />
-                                 )}
-                               </div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm">{bike.name}</p>
+                                  {bike.hasTrailerHook && (
+                                    <div className="flex items-center gap-1 px-2 py-1 bg-electric-green/20 rounded-md">
+                                      <div className="w-3 h-2 border-2 border-electric-green rounded-sm"></div>
+                                      <div className="w-1 h-1 bg-electric-green rounded-full"></div>
+                                    </div>
+                                  )}
+                                </div>
                                <p className="text-xs text-muted-foreground">
                                  {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} {bike.size} {bike.suspension}
                                  {bike.hasTrailerHook && " (Gancio carrello)"}
