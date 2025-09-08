@@ -1,8 +1,35 @@
 {
-  "name": "vite_react_shadcn_ts",
-  "private": true,
-  "version": "0.0.0",
+  "name": "rabbi-ebike-management-system",
+  "private": false,
+  "version": "1.0.0",
   "type": "module",
+  "description": "Sistema gestionale completo per noleggio e-bike con React, Node.js e SQLite - Booking, inventario, statistiche",
+  "keywords": [
+    "ebike",
+    "bike-rental",
+    "booking-system",
+    "react",
+    "typescript",
+    "nodejs",
+    "sqlite",
+    "management-system",
+    "dashboard",
+    "inventory",
+    "rental-management",
+    "electric-bike",
+    "bicycle-rental",
+    "booking-calendar"
+  ],
+  "author": "Simone Mattioli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/username/rabbi-ebike-management-system.git"
+  },
+  "homepage": "https://github.com/username/rabbi-ebike-management-system#readme",
+  "bugs": {
+    "url": "https://github.com/username/rabbi-ebike-management-system/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
