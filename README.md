@@ -6,13 +6,13 @@
 ![React](https://img.shields.io/badge/react-18.3.1-blue.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.8.3-blue.svg)
 
-![GitHub stars](https://img.shields.io/github/stars/username/rabbi-ebike-management-system?style=social)
-![GitHub forks](https://img.shields.io/github/forks/username/rabbi-ebike-management-system?style=social)
-![GitHub issues](https://img.shields.io/github/issues/username/rabbi-ebike-management-system)
-![GitHub last commit](https://img.shields.io/github/last-commit/username/rabbi-ebike-management-system)
-![GitHub repo size](https://img.shields.io/github/repo-size/username/rabbi-ebike-management-system)
-![GitHub language count](https://img.shields.io/github/languages/count/username/rabbi-ebike-management-system)
-![GitHub top language](https://img.shields.io/github/languages/top/username/rabbi-ebike-management-system)
+![GitHub stars](https://img.shields.io/github/stars/simo-hue/rabbi-ebike-management-system?style=social)
+![GitHub forks](https://img.shields.io/github/forks/simo-hue/rabbi-ebike-management-system?style=social)
+![GitHub issues](https://img.shields.io/github/issues/simo-hue/rabbi-ebike-management-system)
+![GitHub last commit](https://img.shields.io/github/last-commit/simo-hue/rabbi-ebike-management-system)
+![GitHub repo size](https://img.shields.io/github/repo-size/simo-hue/rabbi-ebike-management-system)
+![GitHub language count](https://img.shields.io/github/languages/count/simo-hue/rabbi-ebike-management-system)
+![GitHub top language](https://img.shields.io/github/languages/top/simo-hue/rabbi-ebike-management-system)
 
 **Sistema gestionale professionale completo per noleggio biciclette elettriche** con interfaccia web moderna, database locale SQLite e funzionalità avanzate di booking, inventario e statistiche.
 

@@ -24,11 +24,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/username/rabbi-ebike-management-system.git"
+    "url": "git+https://github.com/simo-hue/rabbi-ebike-management-system.git"
   },
-  "homepage": "https://github.com/username/rabbi-ebike-management-system#readme",
+  "homepage": "https://github.com/simo-hue/rabbi-ebike-management-system#readme",
   "bugs": {
-    "url": "https://github.com/username/rabbi-ebike-management-system/issues"
+    "url": "https://github.com/simo-hue/rabbi-ebike-management-system/issues"
   },
   "scripts": {
     "dev": "vite",
