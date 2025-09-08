@@ -400,7 +400,7 @@ export const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src="/lovable-uploads/b5fe5e84-6517-4fb4-a54d-3df62a0fe579.png" 
+                src="/logo.png" 
                 alt="Rabbi E-Bike Logo" 
                 className="w-10 h-10 object-contain"
               />

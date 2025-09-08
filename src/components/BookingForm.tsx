@@ -379,7 +379,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                                    {bike.hasTrailerHook && (
                                      <div className="bg-electric-green/20 px-2 py-1 rounded-md flex items-center gap-1">
                                        <img 
-                                         src="/lovable-uploads/b5fe5e84-6517-4fb4-a54d-3df62a0fe579.png" 
+                                         src="/logo.png" 
                                          alt="Gancio carrello" 
                                          className="w-4 h-3 object-contain"
                                        />

@@ -1,73 +1,191 @@
-# Welcome to your Lovable project
+# Rabbi E-Bike Management System
 
-## Project info
+Sistema completo per la gestione di un negozio di noleggio e-bike con interfaccia web intuitiva e database locale SQLite.
 
-**URL**: https://lovable.dev/projects/2845bd14-bdc7-46a3-ac77-8e9546974d7e
+## 🚴‍♂️ Funzionalità Principali
 
-## How can I edit this code?
+### 📅 **Gestione Prenotazioni**
+- **Calendario interattivo** per visualizzare e gestire le prenotazioni
+- **Prenotazioni in tempo reale** con controllo disponibilità biciclette
+- **Categorie flessibili**: oraria, mezza giornata, giornata intera
+- **Servizio guida opzionale** con tariffazione separata
+- **Stati prenotazione**: confermata, in corso, completata, cancellata
 
-There are several ways of editing your application.
+### 🏪 **Configurazione Negozio**
+- **Impostazioni generali**: nome negozio, telefono, email, orari
+- **Gestione prezzi**: tariffe orarie, giornaliere, servizio guida
+- **Inventario biciclette**: gestione completa del garage virtuale
 
-**Use Lovable**
+### 🚲 **Garage Virtuale**
+- **Gestione inventario** con tipi, taglie e sospensioni
+- **Tipi supportati**: Adulto, Bambino, Carrello porta-bimbi, Trailer
+- **Taglie**: S, M, L, XL
+- **Sospensioni**: Solo anteriore, Full-suspension
+- **Indicatori ganci carrello** per bici compatibili
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2845bd14-bdc7-46a3-ac77-8e9546974d7e) and start prompting.
+### 📊 **Statistiche e Monitoraggio**
+- **Dashboard** con statistiche giornaliere, settimanali, mensili
+- **Grafici ricavi** e utilizzo biciclette
+- **Monitoraggio performance** server
+- **Sistema di backup** automatico e manuale
 
-Changes made via Lovable will be committed automatically to this repo.
+### ⚙️ **Pannello Sviluppatore**
+- **Configurazione server**: porta, backup, debug
+- **Gestione database**: backup, ripristino, statistiche
+- **Log sistema** per troubleshooting
+- **Import/Export** dati completi
 
-**Use your preferred IDE**
+## 🔧 Installazione e Setup (Guida Completa)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### **Prerequisiti**
+Prima di iniziare, assicurati di avere installato:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Node.js** (versione 16 o superiore)
+   - Scarica da [nodejs.org](https://nodejs.org/)
+   - Per verificare l'installazione: `node --version` e `npm --version`
 
-Follow these steps:
+### **Passo 1: Preparazione Files**
+1. Scarica o clona il progetto sul tuo computer
+2. Apri il **Terminale** (su Mac) o **Prompt dei comandi** (su Windows)
+3. Naviga nella cartella del progetto:
+   ```bash
+   cd /percorso/alla/cartella/rabbieebike
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### **Passo 2: Installazione Dipendenze Frontend**
+```bash
+# Installa le dipendenze del frontend
+npm install
 ```
 
-**Edit a file directly in GitHub**
+### **Passo 3: Installazione e Avvio Server Backend**
+```bash
+# Vai nella cartella server
+cd server
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# Installa le dipendenze del server
+npm install
 
-**Use GitHub Codespaces**
+# Avvia il server (lascia aperto questo terminale)
+npm start
+```
+**✅ Il server sarà disponibile su:** `http://localhost:3001`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### **Passo 4: Avvio Frontend (Nuovo Terminale)**
+Apri un **nuovo terminale** e:
+```bash
+# Torna nella cartella principale del progetto
+cd /percorso/alla/cartella/rabbieebike
 
-## What technologies are used for this project?
+# Avvia il frontend
+npm run dev
+```
+**✅ L'applicazione sarà disponibile su:** `http://localhost:8080`
 
-This project is built with:
+### **Utilizzo Quotidiano**
+Dopo la prima installazione, per utilizzare il software:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. **Avvia il server** (terminale 1):
+   ```bash
+   cd server
+   npm start
+   ```
 
-## How can I deploy this project?
+2. **Avvia il frontend** (terminale 2):
+   ```bash
+   npm run dev
+   ```
 
-Simply open [Lovable](https://lovable.dev/projects/2845bd14-bdc7-46a3-ac77-8e9546974d7e) and click on Share -> Publish.
+3. **Apri il browser** su `http://localhost:8080`
 
-## Can I connect a custom domain to my Lovable project?
+## 🎯 Come Utilizzare il Software
 
-Yes, you can!
+### **Prima Configurazione**
+1. **Apri l'applicazione** nel browser
+2. **Vai in Impostazioni** (icona ingranaggio)
+3. **Configura i dati del negozio**:
+   - Nome negozio
+   - Telefono e email
+   - Orari di apertura
+   - Tariffe (oraria, mezza giornata, giornata intera, guida)
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### **Configurazione Garage**
+1. **Vai nella sezione "Garage"**
+2. **Aggiungi le tue biciclette**:
+   - Seleziona tipo (Adulto/Bambino/Carrello/Trailer)
+   - Scegli taglia (S/M/L/XL)
+   - Imposta sospensioni (Solo anteriore/Full-suspension)
+   - Indica se ha gancio carrello
+   - Specifica la quantità disponibile
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### **Gestione Prenotazioni**
+1. **Visualizza il calendario** nella dashboard principale
+2. **Crea nuova prenotazione**:
+   - Clicca su "+ Nuova Prenotazione"
+   - Inserisci dati cliente (nome, telefono, email)
+   - Seleziona data e orari
+   - Scegli categoria (oraria/mezza giornata/giornata intera)
+   - Seleziona biciclette dal garage disponibile
+   - Aggiungi servizio guida se necessario
+   - Salva prenotazione
+
+### **Gestione Quotidiana**
+- **Dashboard**: monitora prenotazioni del giorno
+- **Calendario**: visualizza prenotazioni future
+- **Statistiche**: analizza performance e ricavi
+- **Backup**: salva periodicamente i dati (sezione Developer)
+
+## 🗄️ Database e Backup
+
+### **Database SQLite Locale**
+- **File database**: `server/rabbi_ebike.db`
+- **Backup automatici**: cartella `server/backups/`
+- **Configurazione backup** nel Pannello Developer
+
+### **Gestione Backup**
+- **Automatico**: configurabile ogni N ore
+- **Manuale**: click su "Crea Backup" nel pannello Developer
+- **Ripristino**: sostituisci il file database con un backup precedente
+
+## 🛠️ Tecnologie Utilizzate
+
+### **Frontend**
+- **React 18** con **TypeScript**
+- **Vite** come build tool
+- **shadcn/ui** per i componenti UI
+- **Tailwind CSS** per lo styling
+- **React Query** per la gestione stato server
+- **React Hook Form** per i form
+
+### **Backend**
+- **Node.js** con **Express**
+- **SQLite3** come database
+- **CORS** per comunicazione frontend-backend
+
+## 🚨 Risoluzione Problemi
+
+### **Server non si avvia**
+- Verifica che Node.js sia installato: `node --version`
+- Controlla che la porta 3001 sia libera
+- Verifica i permessi di scrittura nella cartella
+
+### **Frontend non si connette**
+- Assicurati che il server sia avviato su `localhost:3001`
+- Controlla la console del browser per errori
+- Verifica la configurazione nel Pannello Developer
+
+### **Database corrotto**
+- Ripristina da un backup precedente
+- Elimina `rabbi_ebike.db` per ricrearlo con dati default
+
+### **Supporto**
+Per problemi tecnici o domande:
+- Controlla i **log** nel Pannello Developer
+- Verifica le **statistiche database**
+- Consulta la documentazione tecnica in `CLAUDE.md`
+
+## 📱 Accesso
+
+- **URL Locale**: `http://localhost:8080`
+- **Accesso da altri dispositivi**: `http://[IP-TUO-COMPUTER]:8080`
+- **Responsive**: utilizzabile da desktop, tablet e smartphone
