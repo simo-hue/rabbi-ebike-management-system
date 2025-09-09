@@ -33,30 +33,194 @@ const addLog = (level, message, details = null) => {
   console.log(`[${level.toUpperCase()}] ${message}`, details || '');
 };
 
+// Enhanced error handling helper
+const handleDatabaseError = (res, err, operation = 'database operation', statusCode = 500) => {
+  const errorId = Date.now().toString();
+  addLog('error', `Database error during ${operation}`, { errorId, error: err.message });
+  
+  // Don't expose internal database errors to client
+  const clientMessage = statusCode === 500 ? 'Internal server error' : err.message;
+  return res.status(statusCode).json({ 
+    error: clientMessage,
+    errorId: errorId
+  });
+};
+
+// Input validation helper
+const validateRequired = (fields, data) => {
+  const missing = [];
+  for (const field of fields) {
+    if (!data[field] || (typeof data[field] === 'string' && data[field].trim() === '')) {
+      missing.push(field);
+    }
+  }
+  return missing;
+};
+
+// Enhanced data validation helpers
+const validateEmail = (email) => {
+  if (!email) return true; // Optional field
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validatePhone = (phone) => {
+  if (!phone) return false;
+  // Italian phone number validation (basic)
+  const phoneRegex = /^[\+]?[0-9\s\-\(\)]{8,15}$/;
+  return phoneRegex.test(phone);
+};
+
+const validateTimeFormat = (time) => {
+  if (!time) return false;
+  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  return timeRegex.test(time);
+};
+
+const validateBikeType = (type) => {
+  const validTypes = ['bambino', 'adulto', 'carrello-porta-bimbi', 'trailer'];
+  return validTypes.includes(type);
+};
+
+const validateBikeSize = (size) => {
+  const validSizes = ['S', 'M', 'L', 'XL'];
+  return validSizes.includes(size);
+};
+
+const validateBikeSuspension = (suspension) => {
+  const validSuspensions = ['full-suspension', 'front-only'];
+  return validSuspensions.includes(suspension);
+};
+
+const validateBookingStatus = (status) => {
+  const validStatuses = ['confirmed', 'pending', 'cancelled'];
+  return validStatuses.includes(status);
+};
+
+const validateBookingCategory = (category) => {
+  const validCategories = ['hourly', 'half-day', 'full-day'];
+  return validCategories.includes(category);
+};
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Performance tracking middleware
+// Enhanced performance tracking middleware with detailed logging
 app.use((req, res, next) => {
   const start = Date.now();
   requestCount++;
+  const requestId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+  
+  // Log incoming request
+  addLog('debug', `Incoming ${req.method} ${req.path}`, {
+    requestId,
+    userAgent: req.get('User-Agent'),
+    ip: req.ip,
+    query: req.query,
+    bodySize: JSON.stringify(req.body).length
+  });
   
   res.on('finish', () => {
     const duration = Date.now() - start;
     totalResponseTime += duration;
     
+    // Log response details
+    const logLevel = res.statusCode >= 400 ? 'warn' : 'debug';
+    addLog(logLevel, `${req.method} ${req.path} - ${res.statusCode}`, {
+      requestId,
+      duration: `${duration}ms`,
+      statusCode: res.statusCode
+    });
+    
     if (res.statusCode >= 400) {
       errorCount++;
+    }
+    
+    // Log slow requests (>1000ms)
+    if (duration > 1000) {
+      addLog('warn', 'Slow request detected', {
+        requestId,
+        method: req.method,
+        path: req.path,
+        duration: `${duration}ms`
+      });
     }
   });
   
   next();
 });
 
-// Database setup
+// Database setup with monitoring
 const dbPath = path.join(__dirname, 'rabbi_ebike.db');
-const db = new sqlite3.Database(dbPath);
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    addLog('error', 'Failed to open database', err.message);
+    process.exit(1);
+  } else {
+    addLog('info', `Database connected successfully: ${dbPath}`);
+  }
+});
+
+// Database query monitoring wrapper
+const originalRun = db.run;
+const originalGet = db.get;
+const originalAll = db.all;
+
+db.run = function(sql, params, callback) {
+  const start = Date.now();
+  return originalRun.call(this, sql, params, function(err) {
+    const duration = Date.now() - start;
+    if (duration > 100) { // Log slow queries
+      addLog('warn', 'Slow database query', {
+        sql: sql.substring(0, 100) + '...',
+        duration: `${duration}ms`,
+        type: 'run'
+      });
+    }
+    if (err) {
+      addLog('error', 'Database run error', { sql: sql.substring(0, 100), error: err.message });
+    }
+    if (callback) callback.call(this, err);
+  });
+};
+
+db.get = function(sql, params, callback) {
+  const start = Date.now();
+  return originalGet.call(this, sql, params, function(err, row) {
+    const duration = Date.now() - start;
+    if (duration > 100) {
+      addLog('warn', 'Slow database query', {
+        sql: sql.substring(0, 100) + '...',
+        duration: `${duration}ms`,
+        type: 'get'
+      });
+    }
+    if (err) {
+      addLog('error', 'Database get error', { sql: sql.substring(0, 100), error: err.message });
+    }
+    if (callback) callback.call(this, err, row);
+  });
+};
+
+db.all = function(sql, params, callback) {
+  const start = Date.now();
+  return originalAll.call(this, sql, params, function(err, rows) {
+    const duration = Date.now() - start;
+    if (duration > 100) {
+      addLog('warn', 'Slow database query', {
+        sql: sql.substring(0, 100) + '...',
+        duration: `${duration}ms`,
+        type: 'all',
+        resultCount: rows ? rows.length : 0
+      });
+    }
+    if (err) {
+      addLog('error', 'Database all error', { sql: sql.substring(0, 100), error: err.message });
+    }
+    if (callback) callback.call(this, err, rows);
+  });
+};
 
 // Initialize database tables
 db.serialize(() => {
@@ -72,6 +236,9 @@ db.serialize(() => {
     pricing_half_day REAL NOT NULL,
     pricing_full_day REAL NOT NULL,
     pricing_guide_hourly REAL NOT NULL,
+    pricing_trailer_hourly REAL DEFAULT 8,
+    pricing_trailer_half_day REAL DEFAULT 20,
+    pricing_trailer_full_day REAL DEFAULT 35,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
@@ -170,13 +337,41 @@ db.serialize(() => {
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // Add check constraints for data integrity (SQLite limitations, we'll do this programmatically)
+  // This will be enforced in the validation helpers we added
+
+  // Create indexes for better performance
+  db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_date ON bookings(booking_date)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_customer ON bookings(customer_name)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_booking_bikes_booking_id ON booking_bikes(booking_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_booking_bikes_type ON booking_bikes(bike_type)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_fixed_costs_category ON fixed_costs(category)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_fixed_costs_active ON fixed_costs(is_active)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_analytics_date ON bike_usage_analytics(usage_date)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_revenue_date ON revenue_analytics(date)`);
+
+  // Migrate existing settings table to add trailer pricing columns if they don't exist
+  db.all("PRAGMA table_info(settings)", (err, columns) => {
+    if (!err && columns) {
+      const hasTrailerHourly = columns.some(col => col.name === 'pricing_trailer_hourly');
+      if (!hasTrailerHourly) {
+        db.run(`ALTER TABLE settings ADD COLUMN pricing_trailer_hourly REAL DEFAULT 8`);
+        db.run(`ALTER TABLE settings ADD COLUMN pricing_trailer_half_day REAL DEFAULT 20`);
+        db.run(`ALTER TABLE settings ADD COLUMN pricing_trailer_full_day REAL DEFAULT 35`);
+        addLog('info', 'Added trailer pricing columns to settings table');
+      }
+    }
+  });
+
   // Insert default settings if none exist
   db.get("SELECT COUNT(*) as count FROM settings", (err, row) => {
     if (row.count === 0) {
       db.run(`INSERT INTO settings (
         id, shop_name, phone, email, opening_time, closing_time,
-        pricing_hourly, pricing_half_day, pricing_full_day, pricing_guide_hourly
-      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+        pricing_hourly, pricing_half_day, pricing_full_day, pricing_guide_hourly,
+        pricing_trailer_hourly, pricing_trailer_half_day, pricing_trailer_full_day
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
         "Rabbi E-Bike Rent Go & Fun",
         "+39 123 456 7890",
         "info@ecoride.it",
@@ -185,7 +380,10 @@ db.serialize(() => {
         15,
         45,
         70,
-        25
+        25,
+        8,
+        20,
+        35
       ]);
     }
   });
@@ -227,6 +425,42 @@ db.serialize(() => {
       defaultCosts.forEach(cost => {
         db.run(`INSERT INTO fixed_costs (name, description, amount, category, frequency, start_date) VALUES (?, ?, ?, ?, ?, ?)`, cost);
       });
+    }
+  });
+
+  // Add database triggers for automatic updated_at timestamps
+  db.run(`CREATE TRIGGER IF NOT EXISTS update_settings_timestamp 
+    AFTER UPDATE ON settings 
+    FOR EACH ROW 
+    BEGIN 
+      UPDATE settings SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
+    END`);
+
+  db.run(`CREATE TRIGGER IF NOT EXISTS update_bookings_timestamp 
+    AFTER UPDATE ON bookings 
+    FOR EACH ROW 
+    BEGIN 
+      UPDATE bookings SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
+    END`);
+
+  db.run(`CREATE TRIGGER IF NOT EXISTS update_fixed_costs_timestamp 
+    AFTER UPDATE ON fixed_costs 
+    FOR EACH ROW 
+    BEGIN 
+      UPDATE fixed_costs SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
+    END`);
+
+  // Fix inconsistent column names in booking_bikes table
+  db.all("PRAGMA table_info(booking_bikes)", (err, columns) => {
+    if (!err && columns) {
+      const hasCountColumn = columns.some(col => col.name === 'count');
+      const hasBikeCountColumn = columns.some(col => col.name === 'bike_count');
+      
+      // If we have 'count' but not 'bike_count', rename it
+      if (hasCountColumn && !hasBikeCountColumn) {
+        db.run(`ALTER TABLE booking_bikes RENAME COLUMN count TO bike_count`);
+        addLog('info', 'Renamed count column to bike_count in booking_bikes table');
+      }
     }
   });
 
@@ -284,7 +518,10 @@ app.get('/api/settings', (req, res) => {
           hourly: settings.pricing_hourly,
           halfDay: settings.pricing_half_day,
           fullDay: settings.pricing_full_day,
-          guideHourly: settings.pricing_guide_hourly
+          guideHourly: settings.pricing_guide_hourly,
+          trailerHourly: settings.pricing_trailer_hourly || 8,
+          trailerHalfDay: settings.pricing_trailer_half_day || 20,
+          trailerFullDay: settings.pricing_trailer_full_day || 35
         },
         totalBikes: bikes.map(bike => ({
           type: bike.type,
@@ -303,10 +540,12 @@ app.put('/api/settings', (req, res) => {
   db.run(`UPDATE settings SET 
     shop_name = ?, phone = ?, email = ?, opening_time = ?, closing_time = ?,
     pricing_hourly = ?, pricing_half_day = ?, pricing_full_day = ?, pricing_guide_hourly = ?,
+    pricing_trailer_hourly = ?, pricing_trailer_half_day = ?, pricing_trailer_full_day = ?,
     updated_at = CURRENT_TIMESTAMP
     WHERE id = 1`, [
     shopName, phone, email, openingTime, closingTime,
-    pricing.hourly, pricing.halfDay, pricing.fullDay, pricing.guideHourly
+    pricing.hourly, pricing.halfDay, pricing.fullDay, pricing.guideHourly,
+    pricing.trailerHourly || 8, pricing.trailerHalfDay || 20, pricing.trailerFullDay || 35
   ], function(err) {
     if (err) {
       return res.status(500).json({ error: err.message });
@@ -544,61 +783,174 @@ app.get('/api/analytics/revenue-breakdown', (req, res) => {
   });
 });
 
-// Bookings endpoints
+// Bookings endpoints with optimized query
 app.get('/api/bookings', (req, res) => {
-  db.all(`SELECT b.*, GROUP_CONCAT(bb.bike_type || '|' || bb.bike_size || '|' || bb.bike_suspension || '|' || bb.count) as bikes
-          FROM bookings b
-          LEFT JOIN booking_bikes bb ON b.id = bb.booking_id
-          GROUP BY b.id
-          ORDER BY b.booking_date, b.start_time`, (err, rows) => {
+  // Use separate queries for better performance and reliability
+  db.all(`SELECT * FROM bookings ORDER BY booking_date DESC, start_time ASC`, (err, bookings) => {
     if (err) {
-      return res.status(500).json({ error: err.message });
+      return handleDatabaseError(res, err, 'fetch bookings');
     }
     
-    const bookings = rows.map(row => ({
-      id: row.id,
-      customerName: row.customer_name,
-      phone: row.phone,
-      email: row.email,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      date: new Date(row.booking_date),
-      category: row.category,
-      needsGuide: Boolean(row.needs_guide),
-      status: row.status,
-      totalPrice: row.total_price,
-      bikeDetails: row.bikes ? row.bikes.split(',').map(bike => {
-        const [type, size, suspension, count] = bike.split('|');
-        return { type, size, suspension, count: parseInt(count) };
-      }) : []
-    }));
+    if (bookings.length === 0) {
+      return res.json([]);
+    }
     
-    res.json(bookings);
+    // Get all bike details in one query
+    const bookingIds = bookings.map(b => `'${b.id}'`).join(',');
+    db.all(`SELECT * FROM booking_bikes WHERE booking_id IN (${bookingIds})`, (err, bikeDetails) => {
+      if (err) {
+        return handleDatabaseError(res, err, 'fetch booking bikes');
+      }
+      
+      // Group bike details by booking_id
+      const bikesByBooking = bikeDetails.reduce((acc, bike) => {
+        if (!acc[bike.booking_id]) {
+          acc[bike.booking_id] = [];
+        }
+        acc[bike.booking_id].push({
+          type: bike.bike_type,
+          size: bike.bike_size,
+          suspension: bike.bike_suspension,
+          count: bike.bike_count,
+          hasTrailerHook: bike.has_trailer_hook
+        });
+        return acc;
+      }, {});
+      
+      // Map bookings with their bike details
+      const result = bookings.map(booking => ({
+        id: booking.id,
+        customerName: booking.customer_name,
+        phone: booking.phone,
+        email: booking.email,
+        startTime: booking.start_time,
+        endTime: booking.end_time,
+        date: new Date(booking.booking_date),
+        category: booking.category,
+        needsGuide: booking.needs_guide,
+        status: booking.status,
+        totalPrice: booking.total_price,
+        bikeDetails: bikesByBooking[booking.id] || []
+      }));
+      
+      addLog('info', `Retrieved ${result.length} bookings with bike details`);
+      res.json(result);
+    });
   });
 });
 
 app.post('/api/bookings', (req, res) => {
   const { id, customerName, phone, email, startTime, endTime, date, category, needsGuide, status, totalPrice, bikeDetails } = req.body;
   
-  db.run(`INSERT INTO bookings (
-    id, customer_name, phone, email, start_time, end_time, booking_date, 
-    category, needs_guide, status, total_price
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
-    id, customerName, phone, email, startTime, endTime, 
-    new Date(date).toISOString().split('T')[0], category, needsGuide, status, totalPrice
-  ], function(err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+  // Validate required fields
+  const missing = validateRequired(['id', 'customerName', 'phone', 'startTime', 'endTime', 'date', 'category'], req.body);
+  if (missing.length > 0) {
+    return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
+  }
+
+  // Validate email format
+  if (email && !validateEmail(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  // Validate phone format
+  if (!validatePhone(phone)) {
+    return res.status(400).json({ error: 'Invalid phone number format' });
+  }
+
+  // Validate time formats
+  if (!validateTimeFormat(startTime) || !validateTimeFormat(endTime)) {
+    return res.status(400).json({ error: 'Invalid time format (use HH:MM)' });
+  }
+
+  // Validate booking category
+  if (!validateBookingCategory(category)) {
+    return res.status(400).json({ error: 'Invalid booking category' });
+  }
+
+  // Validate booking status
+  if (status && !validateBookingStatus(status)) {
+    return res.status(400).json({ error: 'Invalid booking status' });
+  }
+
+  // Validate date format
+  let bookingDate;
+  try {
+    bookingDate = new Date(date).toISOString().split('T')[0];
+    if (bookingDate === 'Invalid Date' || isNaN(new Date(date).getTime())) {
+      throw new Error('Invalid date format');
     }
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid date format' });
+  }
+
+  // Validate price
+  if (typeof totalPrice !== 'number' || totalPrice < 0) {
+    return res.status(400).json({ error: 'Invalid total price' });
+  }
+
+  // Validate bike details
+  if (!bikeDetails || !Array.isArray(bikeDetails) || bikeDetails.length === 0) {
+    return res.status(400).json({ error: 'At least one bike must be selected' });
+  }
+
+  // Validate each bike detail
+  for (const bike of bikeDetails) {
+    if (!validateBikeType(bike.type)) {
+      return res.status(400).json({ error: `Invalid bike type: ${bike.type}` });
+    }
+    if (!validateBikeSize(bike.size)) {
+      return res.status(400).json({ error: `Invalid bike size: ${bike.size}` });
+    }
+    if (!validateBikeSuspension(bike.suspension)) {
+      return res.status(400).json({ error: `Invalid bike suspension: ${bike.suspension}` });
+    }
+    if (!Number.isInteger(bike.count) || bike.count <= 0) {
+      return res.status(400).json({ error: 'Bike count must be a positive integer' });
+    }
+  }
+  
+  // Use transaction for booking creation
+  db.serialize(() => {
+    db.run("BEGIN TRANSACTION");
     
-    // Insert bike details
-    const stmt = db.prepare("INSERT INTO booking_bikes (booking_id, bike_type, bike_size, bike_suspension, count) VALUES (?, ?, ?, ?, ?)");
-    bikeDetails.forEach(bike => {
-      stmt.run([id, bike.type, bike.size, bike.suspension, bike.count]);
+    // Insert booking
+    db.run(`INSERT INTO bookings (
+      id, customer_name, phone, email, start_time, end_time, booking_date, 
+      category, needs_guide, status, total_price
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+      id, customerName.trim(), phone.trim(), email?.trim() || null, startTime, endTime, 
+      bookingDate, category, needsGuide, status, totalPrice
+    ], function(err) {
+      if (err) {
+        db.run("ROLLBACK");
+        return handleDatabaseError(res, err, 'booking creation');
+      }
+      
+      // Insert bike details
+      let bikeInsertError = false;
+      const stmt = db.prepare("INSERT INTO booking_bikes (booking_id, bike_type, bike_size, bike_suspension, bike_count, has_trailer_hook) VALUES (?, ?, ?, ?, ?, ?)");
+      
+      for (const bike of bikeDetails) {
+        stmt.run([id, bike.type, bike.size, bike.suspension, bike.count, bike.hasTrailerHook || false], function(err) {
+          if (err) {
+            bikeInsertError = true;
+            addLog('error', 'Failed to insert bike details', { bookingId: id, error: err.message });
+          }
+        });
+      }
+      
+      stmt.finalize(() => {
+        if (bikeInsertError) {
+          db.run("ROLLBACK");
+          return res.status(500).json({ error: 'Failed to create booking with bike details' });
+        } else {
+          db.run("COMMIT");
+          addLog('info', 'New booking created successfully with transaction', { bookingId: id, customer: customerName });
+          res.json({ success: true, id });
+        }
+      });
     });
-    stmt.finalize();
-    
-    res.json({ success: true, id });
   });
 });
 
@@ -623,7 +975,7 @@ app.put('/api/bookings/:id', (req, res) => {
         return res.status(500).json({ error: err.message });
       }
       
-      const stmt = db.prepare("INSERT INTO booking_bikes (booking_id, bike_type, bike_size, bike_suspension, count) VALUES (?, ?, ?, ?, ?)");
+      const stmt = db.prepare("INSERT INTO booking_bikes (booking_id, bike_type, bike_size, bike_suspension, bike_count) VALUES (?, ?, ?, ?, ?)");
       bikeDetails.forEach(bike => {
         stmt.run([req.params.id, bike.type, bike.size, bike.suspension, bike.count]);
       });
@@ -729,13 +1081,51 @@ app.get('/api/database/stats', (req, res) => {
 app.get('/api/monitoring/metrics', (req, res) => {
   const uptime = Math.floor((Date.now() - startTime) / 1000);
   const avgResponseTime = requestCount > 0 ? Math.round(totalResponseTime / requestCount) : 0;
-  const errorRate = requestCount > 0 ? errorCount / requestCount : 0;
+  const errorRate = requestCount > 0 ? (errorCount / requestCount * 100).toFixed(2) : 0;
+  
+  // Get database stats
+  const dbStats = {
+    path: dbPath,
+    connected: true // We're responding so DB is connected
+  };
+  
+  // Get memory usage
+  const memoryUsage = process.memoryUsage();
+  
+  // Calculate recent activity (last 5 minutes)
+  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+  const recentLogs = logs.filter(log => new Date(log.timestamp).getTime() > fiveMinutesAgo);
+  const recentErrors = recentLogs.filter(log => log.level === 'error').length;
+  const recentWarnings = recentLogs.filter(log => log.level === 'warn').length;
   
   res.json({
+    // Basic metrics
     totalRequests: requestCount,
-    avgResponseTime,
-    errorRate,
-    uptime
+    avgResponseTime: `${avgResponseTime}ms`,
+    errorRate: `${errorRate}%`,
+    totalErrors: errorCount,
+    uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${uptime % 60}s`,
+    
+    // System metrics
+    memory: {
+      used: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+      total: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+      external: `${Math.round(memoryUsage.external / 1024 / 1024)}MB`
+    },
+    
+    // Database metrics
+    database: dbStats,
+    
+    // Recent activity (last 5 minutes)
+    recent: {
+      errors: recentErrors,
+      warnings: recentWarnings,
+      totalLogs: recentLogs.length
+    },
+    
+    // Timestamps
+    startTime: new Date(startTime).toISOString(),
+    currentTime: new Date().toISOString()
   });
 });
 
@@ -799,7 +1189,7 @@ app.get('/api/data/export', (req, res) => {
 app.post('/api/data/import', (req, res) => {
   try {
     const importData = req.body;
-    addLog('info', 'Complete data import/restore requested');
+    addLog('warn', 'Complete data import/restore requested - this will replace all existing data');
     
     // Validate backup format
     if (!importData || !importData.data) {
@@ -808,9 +1198,59 @@ app.post('/api/data/import', (req, res) => {
 
     const { data, version, stats } = importData;
     
+    // Create automatic backup before restore for safety
+    try {
+      const preRestoreBackup = {
+        exportDate: new Date().toISOString(),
+        version: '2.0',
+        description: 'Automatic backup before restore operation',
+        data: {
+          bookings: db.prepare('SELECT * FROM bookings').all(),
+          booking_bikes: db.prepare('SELECT * FROM booking_bikes').all(),
+          bikes: db.prepare('SELECT * FROM bikes').all(),
+          settings: db.prepare('SELECT * FROM settings').all(),
+          server_config: db.prepare('SELECT * FROM server_config').all()
+        }
+      };
+      
+      const fs = require('fs');
+      const backupPath = path.join(__dirname, 'backups', `pre-restore-${Date.now()}.json`);
+      
+      // Ensure backups directory exists
+      if (!fs.existsSync(path.join(__dirname, 'backups'))) {
+        fs.mkdirSync(path.join(__dirname, 'backups'), { recursive: true });
+      }
+      
+      fs.writeFileSync(backupPath, JSON.stringify(preRestoreBackup, null, 2));
+      addLog('info', `Pre-restore backup created: ${backupPath}`);
+    } catch (backupErr) {
+      addLog('error', 'Failed to create pre-restore backup', backupErr.message);
+      return res.status(500).json({ error: 'Failed to create safety backup before restore' });
+    }
+    
     // Check backup version compatibility
     if (version && parseFloat(version) < 2.0) {
       addLog('warn', `Importing older backup format version ${version}`);
+    }
+
+    // Validate data structure before proceeding
+    const validationErrors = [];
+    
+    if (data.bookings && !Array.isArray(data.bookings)) {
+      validationErrors.push('Bookings data must be an array');
+    }
+    
+    if (data.booking_bikes && !Array.isArray(data.booking_bikes)) {
+      validationErrors.push('Booking bikes data must be an array');
+    }
+    
+    if (data.settings && !Array.isArray(data.settings)) {
+      validationErrors.push('Settings data must be an array');
+    }
+    
+    if (validationErrors.length > 0) {
+      addLog('error', 'Import data validation failed', validationErrors);
+      return res.status(400).json({ error: 'Invalid data structure', details: validationErrors });
     }
 
     // Start transaction-like operations

@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function useApiData<T>(
   endpoint: () => Promise<T>,
-  dependencies: any[] = []
+  dependencies: unknown[] = []
 ) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +32,7 @@ export function useApiData<T>(
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
 
   return { data, loading, error, refetch: fetchData };

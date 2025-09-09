@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,38 +44,50 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   useEffect(() => {
     const totalBikes = selectedBikes.reduce((sum, bike) => sum + bike.count, 0);
     
-    if (totalBikes > customers.length) {
-      // Add customers if more bikes are selected
-      const newCustomers = [...customers];
-      for (let i = customers.length; i < totalBikes; i++) {
-        newCustomers.push({ name: `Persona ${i + 1}`, height: 0 });
+    setCustomers(currentCustomers => {
+      if (totalBikes > currentCustomers.length) {
+        // Add customers if more bikes are selected
+        const newCustomers = [...currentCustomers];
+        for (let i = currentCustomers.length; i < totalBikes; i++) {
+          newCustomers.push({ name: `Persona ${i + 1}`, height: 0 });
+        }
+        return newCustomers;
+      } else if (totalBikes < currentCustomers.length && totalBikes > 0) {
+        // Remove excess customers but keep at least one and at least as many as bikes
+        return currentCustomers.slice(0, Math.max(1, totalBikes));
       }
-      setCustomers(newCustomers);
-    } else if (totalBikes < customers.length && totalBikes > 0) {
-      // Remove excess customers but keep at least one and at least as many as bikes
-      setCustomers(customers.slice(0, Math.max(1, totalBikes)));
-    }
+      return currentCustomers;
+    });
   }, [selectedBikes]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const calculateEstimatedPrice = () => {
+  const calculateEstimatedPrice = useCallback(() => {
     if (selectedBikes.length === 0) return 0;
     
-    const totalBikes = selectedBikes.reduce((sum, bike) => sum + bike.count, 0);
     let basePrice = 0;
     
-    if (formData.category === "full-day") {
-      basePrice = settings.pricing.fullDay * totalBikes;
-    } else if (formData.category === "half-day") {
-      basePrice = settings.pricing.halfDay * totalBikes;
-    } else {
-      const startHour = parseInt(formData.startTime.split(':')[0]);
-      const endHour = parseInt(formData.endTime.split(':')[0]);
-      const hours = endHour - startHour;
-      basePrice = settings.pricing.hourly * hours * totalBikes;
-    }
+    // Calculate price for each bike type separately
+    selectedBikes.forEach(bike => {
+      const isTrailer = bike.type === "trailer" || bike.type === "carrello-porta-bimbi";
+      let bikePrice = 0;
+      
+      if (formData.category === "full-day") {
+        bikePrice = isTrailer ? settings.pricing.trailerFullDay : settings.pricing.fullDay;
+      } else if (formData.category === "half-day") {
+        bikePrice = isTrailer ? settings.pricing.trailerHalfDay : settings.pricing.halfDay;
+      } else {
+        const startHour = parseInt(formData.startTime.split(':')[0]);
+        const endHour = parseInt(formData.endTime.split(':')[0]);
+        const hours = endHour - startHour;
+        bikePrice = isTrailer ? 
+          (settings.pricing.trailerHourly * hours) : 
+          (settings.pricing.hourly * hours);
+      }
+      
+      basePrice += bikePrice * bike.count;
+    });
     
     const guidePrice = formData.needsGuide ? settings.pricing.guideHourly * (
       formData.category === "full-day" ? 8 : 
@@ -84,11 +96,11 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
     ) : 0;
     
     return basePrice + guidePrice;
-  };
+  }, [selectedBikes, formData.category, formData.needsGuide, formData.startTime, formData.endTime, settings.pricing]);
 
   useEffect(() => {
     setEstimatedPrice(calculateEstimatedPrice());
-  }, [selectedBikes, formData.category, formData.needsGuide, formData.startTime, formData.endTime]);
+  }, [calculateEstimatedPrice]);
 
   useEffect(() => {
     if (formData.category === "full-day") {

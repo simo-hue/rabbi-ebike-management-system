@@ -685,4 +685,4 @@ export const Statistics = ({ bookings, settings, onClose }: StatisticsProps) => 
       </div>
     </div>
   );
-};
+};export default Statistics;

@@ -148,20 +148,6 @@ export const DevPanel = () => {
       completed: serverConfig?.auto_backup ?? false,
       required: false
     },
-    {
-      id: 'notification-setup',
-      title: 'Configura notifiche',
-      description: 'Imposta email e SMS per ricevere notifiche automatiche',
-      completed: !!(serverConfig?.notification_email || serverConfig?.sms_notifications),
-      required: false
-    },
-    {
-      id: 'pricing-setup',
-      title: 'Configura prezzi dinamici',
-      description: 'Attiva aggiornamenti automatici dei prezzi basati su orari e stagioni',
-      completed: serverConfig?.auto_pricing_updates ?? false,
-      required: false
-    }
   ];
 
   const handleApiConfigUpdate = () => {
@@ -1338,3 +1324,4 @@ export const DevPanel = () => {
       </div>
     );
   };
+export default DevPanel;

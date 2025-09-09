@@ -68,12 +68,13 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
       case "day":
         return bookings.filter(booking => isSameDay(booking.date, selectedDate));
       
-      case "week":
+      case "week": {
         const weekStart = startOfWeek(selectedDate, { locale: it });
         const weekEnd = endOfWeek(selectedDate, { locale: it });
         return bookings.filter(booking => 
           booking.date >= weekStart && booking.date <= weekEnd
         );
+      }
       
       case "month":
         return bookings.filter(booking => 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -101,7 +101,7 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
       const [bikeData, revenueData] = await Promise.all([
@@ -120,11 +120,11 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPeriod, toast]);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [selectedPeriod]);
+  }, [selectedPeriod, fetchAnalytics]);
 
   const getBikeDisplayName = (bike: BikePerformance) => {
     const type = bike.bike_type === "bambino" ? "Bambino" : 
@@ -681,4 +681,4 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
 
 function Label({ children, className }: { children: React.ReactNode; className?: string }) {
   return <label className={className}>{children}</label>;
-}
+}export default AdvancedAnalytics;

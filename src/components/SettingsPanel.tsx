@@ -373,3 +373,5 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
     </div>
   );
 };
+
+export default SettingsPanel;

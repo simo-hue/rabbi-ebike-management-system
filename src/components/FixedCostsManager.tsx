@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,7 +72,7 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
     isActive: true
   });
 
-  const fetchCosts = async () => {
+  const fetchCosts = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiService.getFixedCosts();
@@ -86,11 +86,11 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchCosts();
-  }, []);
+  }, [fetchCosts]);
 
   const handleSaveCost = async () => {
     if (!newCost.name || newCost.amount <= 0) {
@@ -539,4 +539,4 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
       </Dialog>
     </div>
   );
-};
+};export default FixedCostsManager;

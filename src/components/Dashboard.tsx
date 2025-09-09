@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,16 +8,18 @@ import rabbiEbikeLogo from "@/assets/rabbi-ebike-logo.png";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { BookingForm } from "./BookingForm";
-import { SettingsPanel } from "./SettingsPanel";
 import { BookingList } from "./BookingList";
-import { Statistics } from "./Statistics";
-import { AdvancedAnalytics } from "./AdvancedAnalytics";
 import { apiService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useServerStatus } from "@/hooks/useApi";
-import { DevPanel } from "./DevPanel";
-import { Garage } from "./Garage";
-import { FixedCostsManager } from "./FixedCostsManager";
+
+// Lazy load heavy components
+const SettingsPanel = lazy(() => import("./SettingsPanel"));
+const Statistics = lazy(() => import("./Statistics"));
+const AdvancedAnalytics = lazy(() => import("./AdvancedAnalytics"));
+const DevPanel = lazy(() => import("./DevPanel"));
+const Garage = lazy(() => import("./Garage"));
+const FixedCostsManager = lazy(() => import("./FixedCostsManager"));
 
 // Import types from dedicated file
 import type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord } from "@/types/bike";
@@ -208,7 +210,7 @@ export const Dashboard = () => {
         ]);
         
         setSettings(settingsData);
-        setBookings(bookingsData.map((b: any) => ({ ...b, date: new Date(b.date) })));
+        setBookings(bookingsData.map((b: Omit<Booking, 'date'> & { date: string }) => ({ ...b, date: new Date(b.date) })));
       } catch (error) {
         console.error('Failed to load data:', error);
         toast({
@@ -404,7 +406,7 @@ export const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <img 
-                src="/logo.png" 
+                src="/logo.webp" 
                 alt="Rabbi E-Bike Logo" 
                 className="w-16 h-16 object-contain"
               />
@@ -601,45 +603,55 @@ export const Dashboard = () => {
       )}
 
       {showSettings && (
-        <SettingsPanel
-          settings={settings}
-          onSave={handleSaveSettings}
-          onClose={() => setShowSettings(false)}
-        />
+        <Suspense fallback={<div className="p-8 text-center">Caricamento impostazioni...</div>}>
+          <SettingsPanel
+            settings={settings}
+            onSave={handleSaveSettings}
+            onClose={() => setShowSettings(false)}
+          />
+        </Suspense>
       )}
 
       {showStatistics && (
-        <Statistics
-          bookings={bookings}
-          settings={settings}
-          onClose={() => setShowStatistics(false)}
-        />
+        <Suspense fallback={<div className="p-8 text-center">Caricamento statistiche...</div>}>
+          <Statistics
+            bookings={bookings}
+            settings={settings}
+            onClose={() => setShowStatistics(false)}
+          />
+        </Suspense>
       )}
 
       {showAdvancedAnalytics && (
-        <AdvancedAnalytics
-          bookings={bookings}
-          settings={settings}
-          onClose={() => setShowAdvancedAnalytics(false)}
-        />
+        <Suspense fallback={<div className="p-8 text-center">Caricamento analitiche...</div>}>
+          <AdvancedAnalytics
+            bookings={bookings}
+            settings={settings}
+            onClose={() => setShowAdvancedAnalytics(false)}
+          />
+        </Suspense>
       )}
 
       {showGarage && (
-        <Garage
-          bikes={settings.bikes || []}
-          onUpdateBikes={(bikes) => {
-            const updatedSettings = { ...settings, bikes };
-            setSettings(updatedSettings);
-            handleSaveSettings(updatedSettings);
-          }}
-          onClose={() => setShowGarage(false)}
-        />
+        <Suspense fallback={<div className="p-8 text-center">Caricamento garage...</div>}>
+          <Garage
+            bikes={settings.bikes || []}
+            onUpdateBikes={(bikes) => {
+              const updatedSettings = { ...settings, bikes };
+              setSettings(updatedSettings);
+              handleSaveSettings(updatedSettings);
+            }}
+            onClose={() => setShowGarage(false)}
+          />
+        </Suspense>
       )}
 
       {showFixedCostsManager && (
-        <FixedCostsManager
-          onClose={() => setShowFixedCostsManager(false)}
-        />
+        <Suspense fallback={<div className="p-8 text-center">Caricamento gestione costi...</div>}>
+          <FixedCostsManager
+            onClose={() => setShowFixedCostsManager(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

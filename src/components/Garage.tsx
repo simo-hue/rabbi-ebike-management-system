@@ -1332,3 +1332,4 @@ export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     </div>
   );
 };
+export default Garage;

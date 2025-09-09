@@ -1,3 +1,36 @@
+import type { Booking, ShopSettings } from "../components/Dashboard";
+
+interface ServerConfigUpdate {
+  serverPort?: number;
+  autoBackup?: boolean;
+  backupIntervalHours?: number;
+  maxBackupFiles?: number;
+  debugMode?: boolean;
+  notificationEmail?: string;
+  smsNotifications?: boolean;
+  maintenanceReminderDays?: number;
+  lowBatteryAlert?: boolean;
+  autoPricingUpdates?: boolean;
+  peakHourMultiplier?: number;
+  seasonalDiscount?: number;
+  minimumBookingHours?: number;
+  maxBookingDays?: number;
+  weatherIntegration?: boolean;
+  gpsTracking?: boolean;
+  insuranceRequired?: boolean;
+}
+
+interface FixedCost {
+  id?: number;
+  name: string;
+  description: string;
+  amount: number;
+  category: string;
+  frequency: 'monthly' | 'yearly' | 'one-time';
+  startDate: string;
+  isActive: boolean;
+}
+
 export interface ApiConfig {
   baseUrl: string;
   timeout: number;
@@ -56,7 +89,7 @@ class ApiService {
     return this.fetch('/settings');
   }
 
-  async updateSettings(settings: any) {
+  async updateSettings(settings: Partial<ShopSettings>) {
     return this.fetch('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
@@ -68,14 +101,14 @@ class ApiService {
     return this.fetch('/bookings');
   }
 
-  async createBooking(booking: any) {
+  async createBooking(booking: Omit<Booking, 'id' | 'totalPrice'>) {
     return this.fetch('/bookings', {
       method: 'POST',
       body: JSON.stringify(booking),
     });
   }
 
-  async updateBooking(id: string, booking: any) {
+  async updateBooking(id: string, booking: Partial<Booking>) {
     return this.fetch(`/bookings/${id}`, {
       method: 'PUT',
       body: JSON.stringify(booking),
@@ -93,7 +126,7 @@ class ApiService {
     return this.fetch('/server-config');
   }
 
-  async updateServerConfig(config: any) {
+  async updateServerConfig(config: ServerConfigUpdate) {
     return this.fetch('/server-config', {
       method: 'PUT',
       body: JSON.stringify(config),
@@ -125,14 +158,14 @@ class ApiService {
     return this.fetch('/fixed-costs');
   }
 
-  async createFixedCost(cost: any) {
+  async createFixedCost(cost: Omit<FixedCost, 'id'>) {
     return this.fetch('/fixed-costs', {
       method: 'POST',
       body: JSON.stringify(cost),
     });
   }
 
-  async updateFixedCost(id: string, cost: any) {
+  async updateFixedCost(id: string, cost: Partial<FixedCost>) {
     return this.fetch(`/fixed-costs/${id}`, {
       method: 'PUT',
       body: JSON.stringify(cost),
@@ -159,7 +192,7 @@ class ApiService {
     return this.fetch('/data/export');
   }
 
-  async importAllData(data: any) {
+  async importAllData(data: Record<string, unknown>) {
     return this.fetch('/data/import', {
       method: 'POST',
       body: JSON.stringify(data),
