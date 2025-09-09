@@ -378,11 +378,6 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                                    <p className="font-medium text-sm">{bike.brand} {bike.model}</p>
                                    {bike.hasTrailerHook && (
                                      <div className="bg-electric-green/20 px-2 py-1 rounded-md flex items-center gap-1">
-                                       <img 
-                                         src="/logo.png" 
-                                         alt="Gancio carrello" 
-                                         className="w-4 h-3 object-contain"
-                                       />
                                        <span className="text-xs text-electric-green font-medium">Gancio</span>
                                      </div>
                                    )}

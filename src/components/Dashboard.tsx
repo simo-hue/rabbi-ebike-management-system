@@ -3,7 +3,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, SettingsIcon, PlusIcon, BikeIcon, BarChart3Icon } from "lucide-react";
+import { CalendarIcon, SettingsIcon, PlusIcon, BikeIcon, BarChart3Icon, TrendingUpIcon, EuroIcon } from "lucide-react";
 import rabbiEbikeLogo from "@/assets/rabbi-ebike-logo.png";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -11,11 +11,13 @@ import { BookingForm } from "./BookingForm";
 import { SettingsPanel } from "./SettingsPanel";
 import { BookingList } from "./BookingList";
 import { Statistics } from "./Statistics";
+import { AdvancedAnalytics } from "./AdvancedAnalytics";
 import { apiService } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useServerStatus } from "@/hooks/useApi";
 import { DevPanel } from "./DevPanel";
 import { Garage } from "./Garage";
+import { FixedCostsManager } from "./FixedCostsManager";
 
 // Import types from dedicated file
 import type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord } from "@/types/bike";
@@ -181,7 +183,9 @@ export const Dashboard = () => {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false);
   const [showGarage, setShowGarage] = useState(false);
+  const [showFixedCostsManager, setShowFixedCostsManager] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
@@ -395,18 +399,18 @@ export const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-professional-blue/10">
       {/* Header */}
-      <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="container mx-auto px-4 py-4">
+      <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 shadow-lg">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <img 
                 src="/logo.png" 
                 alt="Rabbi E-Bike Logo" 
-                className="w-10 h-10 object-contain"
+                className="w-16 h-16 object-contain"
               />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">{settings.shopName}</h1>
-                <p className="text-sm text-muted-foreground">Gestionale Prenotazioni E-Bike</p>
+                <h1 className="text-3xl font-bold text-foreground">{settings.shopName}</h1>
+                <p className="text-base text-muted-foreground">Gestionale Prenotazioni E-Bike</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -423,11 +427,31 @@ export const Dashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowAdvancedAnalytics(true)}
+                className="gap-2"
+              >
+                <TrendingUpIcon className="w-4 h-4" />
+                Analytics 360°
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowGarage(true)}
                 className="gap-2"
               >
                 <BikeIcon className="w-4 h-4" />
                 Garage
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFixedCostsManager(true)}
+                className="gap-2"
+              >
+                <EuroIcon className="w-4 h-4" />
+                Costi Fissi
               </Button>
               <Button
                 variant="outline"
@@ -592,6 +616,14 @@ export const Dashboard = () => {
         />
       )}
 
+      {showAdvancedAnalytics && (
+        <AdvancedAnalytics
+          bookings={bookings}
+          settings={settings}
+          onClose={() => setShowAdvancedAnalytics(false)}
+        />
+      )}
+
       {showGarage && (
         <Garage
           bikes={settings.bikes || []}
@@ -601,6 +633,12 @@ export const Dashboard = () => {
             handleSaveSettings(updatedSettings);
           }}
           onClose={() => setShowGarage(false)}
+        />
+      )}
+
+      {showFixedCostsManager && (
+        <FixedCostsManager
+          onClose={() => setShowFixedCostsManager(false)}
         />
       )}
     </div>

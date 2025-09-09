@@ -39,24 +39,46 @@
 - **Gestione prezzi**: tariffe orarie, giornaliere, servizio guida
 - **Inventario biciclette**: gestione completa del garage virtuale
 
-### 🚲 **Garage Virtuale**
-- **Gestione inventario** con tipi, taglie e sospensioni
+### 🚲 **Garage Virtuale Avanzato**
+- **Gestione inventario completa** con tipi, taglie e sospensioni
 - **Tipi supportati**: Adulto, Bambino, Carrello porta-bimbi, Trailer
 - **Taglie**: S, M, L, XL
 - **Sospensioni**: Solo anteriore, Full-suspension
 - **Indicatori ganci carrello** per bici compatibili
+- **Gestione manutenzione** per ogni bicicletta:
+  - Storico manutenzioni con costi
+  - Calcolo profittabilità per singola bici
+  - Monitoraggio costi totali di mantenimento
+- **Analytics per bici**:
+  - Statistiche utilizzo individuale
+  - Costi vs ricavi per ogni bicicletta
+  - Identificazione bici più/meno profittevoli
 
-### 📊 **Statistiche e Monitoraggio**
-- **Dashboard** con statistiche giornaliere, settimanali, mensili
-- **Grafici ricavi** e utilizzo biciclette
-- **Monitoraggio performance** server
-- **Sistema di backup** automatico e manuale
+### 📊 **Analytics e Business Intelligence Avanzate**
+- **Dashboard Statistiche** con metriche giornaliere, settimanali, mensili e annuali
+- **Analytics 360°** - Vista completa delle performance business con:
+  - Performance dettagliata per ogni bicicletta (utilizzo, profittabilità, ore totali)
+  - Top performers con classifiche e metriche avanzate
+  - Analisi break-even e margini di profitto
+  - Tasso di utilizzo delle biciclette in tempo reale
+- **Gestione Costi Fissi Completa**:
+  - Costi predefiniti (affitto, assicurazione, utenze, internet)
+  - Categorie personalizzabili e frequenze (mensile, annuale, una tantum)
+  - Calcolo automatico break-even giornaliero e margini
+- **Grafici ricavi** dettagliati e utilizzo biciclette
+- **Monitoraggio performance** server e business
+- **Sistema di backup completo** automatico e manuale
 
-### ⚙️ **Pannello Sviluppatore**
+### ⚙️ **Pannello Sviluppatore Avanzato**
 - **Configurazione server**: porta, backup, debug
-- **Gestione database**: backup, ripristino, statistiche
-- **Log sistema** per troubleshooting
-- **Import/Export** dati completi
+- **Gestione database**: backup completo, ripristino, statistiche
+- **Log sistema** dettagliati per troubleshooting
+- **Backup e Ripristino Completo**:
+  - Export di TUTTI i dati (prenotazioni, bici, impostazioni, configurazioni, costi)
+  - Import con validazione e conferma
+  - Backup automatici programmabili
+  - Ripristino completo del sistema da backup
+- **Monitoraggio performance** in tempo reale
 
 ## 🗄️ Come Funziona il Salvataggio dei Dati
 
@@ -85,6 +107,9 @@ rabbieebike/
    - `bookings` - Prenotazioni
    - `booking_bikes` - Relazione prenotazioni-biciclette
    - `server_config` - Configurazione server
+   - `fixed_costs` - Costi fissi dell'attività
+   - `bike_usage_analytics` - Analytics utilizzo biciclette
+   - `revenue_analytics` - Analytics ricavi e performance
 
 **📋 Dati Preconfigurati di Default:**
 
@@ -101,6 +126,13 @@ rabbieebike/
 - 2 bici adulto taglia L (sospensioni solo anteriori)
 - 2 bici adulto taglia M (full-suspension)
 - 1 bici bambino taglia S (sospensioni solo anteriori)
+
+💶 **Costi Fissi Preconfigurati:**
+- Affitto Locale: €800/mese
+- Assicurazione: €150/mese
+- Utenze (elettricità, acqua, gas): €120/mese
+- Connessione Internet: €35/mese
+- **Totale costi fissi:** €13.260/anno
 
 ### **Come Funziona il Salvataggio Continuo**
 
@@ -317,9 +349,16 @@ curl http://localhost:3001/api/health
   - Salva e controlla che appaia nel calendario
 - **Elimina la prenotazione di test**
 
-#### **4. 🔒 Primo Backup di Sicurezza**
+#### **4. 💶 Configura Costi Fissi (NUOVO)**
+- **Accedi:** Click su "Costi Fissi" (pannello in alto)
+- **Personalizza costi preconfigurati:**
+  - Modifica importi reali per affitto, assicurazione, utenze
+  - Aggiungi nuovi costi specifici (es. marketing, software, ecc.)
+- **Verifica calcoli break-even** automatici
+
+#### **5. 🔒 Primo Backup di Sicurezza**
 - **Accedi:** Click su "Developer" (pannello in alto)
-- **Click "Crea Backup"** per salvare la configurazione iniziale
+- **Click "Crea Backup Completo"** per salvare tutto il sistema
 - **Verifica:** controlla che sia apparso un nuovo file nella cartella `server/backups/`
 
 ### **FASE 3: Configurazione Avanzata (Opzionale)**
@@ -343,6 +382,65 @@ curl http://localhost:3001/api/health
 - **Esempio:** `http://192.168.1.100:8080`
 
 ## 🎯 Come Utilizzare il Software (Guida Operativa)
+
+### **🔳 Pulsanti Dashboard Principali (Barra Superiore)**
+La dashboard principale ora include questi pulsanti nella barra superiore:
+
+1. **📊 "Statistiche"** - Dashboard classica con metriche base
+2. **📈 "Analytics 360°"** *(NUOVO)* - Vista completa business intelligence
+3. **🚲 "Garage"** - Gestione inventario avanzata con manutenzioni
+4. **💶 "Costi Fissi"** *(NUOVO)* - Gestione completa costi operativi
+5. **⚙️ "Impostazioni"** - Configurazione negozio e prezzi
+6. **🔧 "Developer"** - Pannello tecnico con backup completo
+
+### **📈 Utilizzo Analytics 360°**
+Il nuovo sistema di analytics avanzate si articola in 4 sezioni:
+
+#### **🎯 Tab "Panoramica"**
+- KPI principali con ricavi, costi, profitto netto e margini
+- Top 5 bici più profittevoli con classifica
+- Distribuzione ricavi per categoria (grafico a torta)
+
+#### **🚲 Tab "Performance Bici"**
+- Tabella dettagliata di tutte le biciclette
+- Metriche: prenotazioni, ore utilizzo, ricavi, tasso utilizzo %
+- Grafico a barre del tasso di utilizzo per tipologia
+
+#### **💰 Tab "Analisi Ricavi"**
+- Breakdown ricavi per categoria di noleggio
+- Analisi servizio guida vs senza guida
+- Proiezioni e trend temporali
+
+#### **📊 Tab "Costi & Profittabilità"**
+- Riepilogo finanziario completo
+- Dettaglio tutti i costi fissi
+- Break-even analysis con target giornalieri
+- Status raggiungimento obiettivi
+
+### **💶 Utilizzo Gestione Costi Fissi**
+Nuovo modulo per controllo completo dei costi:
+
+#### **💰 Dashboard Costi**
+- Visualizzazione costi mensili e annuali
+- Break-even giornaliero calcolato automaticamente
+- Proiezioni impatto sui margini
+
+#### **➕ Aggiungere Nuovo Costo**
+1. Click "Aggiungi Costo"
+2. Compila: nome, descrizione, categoria, importo
+3. Seleziona frequenza (mensile/annuale/una tantum)
+4. Imposta data inizio validità
+5. Salva - i calcoli si aggiornano automaticamente
+
+#### **✏️ Gestire Costi Esistenti**
+- **Modifica**: click icona matita per aggiornare
+- **Elimina**: click cestino (con conferma)
+- **Attiva/Disattiva**: per costi temporanei
+
+#### **📊 Monitoraggio Impact**
+- Ogni modifica aggiorna automaticamente break-even
+- Vista immediata impatto sui margini
+- Calcoli proiettati su base annuale
 
 ### **Prima Configurazione**
 1. **Apri l'applicazione** nel browser
@@ -377,7 +475,97 @@ curl http://localhost:3001/api/health
 - **Dashboard**: monitora prenotazioni del giorno
 - **Calendario**: visualizza prenotazioni future
 - **Statistiche**: analizza performance e ricavi
+- **Analytics 360°**: vista completa business con profittabilità e break-even
+- **Costi Fissi**: gestione e monitoraggio costi operativi
+- **Garage Avanzato**: manutenzioni e profittabilità per singola bici
 - **Backup**: salva periodicamente i dati (sezione Developer)
+
+## 🎯 **Nuove Funzionalità Avanzate**
+
+### 📈 **Analytics 360° - Business Intelligence**
+Il sistema ora include un potente modulo di analytics che offre:
+
+#### **🏆 Performance Biciclette**
+- **Classifica Top Performers**: bici più profittevoli con metriche dettagliate
+- **Tasso di Utilizzo**: percentuale di utilizzo reale vs disponibilità
+- **Ricavi per Bicicletta**: guadagno stimato per ogni tipologia
+- **Ore Totali**: monitoraggio utilizzo effettivo
+- **Prenotazioni per Bici**: frequenza di noleggio
+
+#### **💰 Analisi Finanziaria Completa**
+- **Break-Even Analysis**: calcolo punto di pareggio
+- **Margini di Profitto**: analisi redditività con percentuali
+- **Costi vs Ricavi**: confronto dettagliato per periodo
+- **Proiezioni**: stima ricavi futuri basata su storico
+
+#### **📊 Metriche KPI Avanzate**
+- **Profitto Netto**: ricavi - costi fissi
+- **Margine di Profitto**: (profitto/ricavi) × 100
+- **Break-Even Giornaliero**: fatturato minimo per coprire costi
+- **ROI per Bicicletta**: ritorno investimento per singola bici
+
+### 💶 **Gestione Costi Fissi Professionale**
+Nuovo sistema completo per la gestione dei costi operativi:
+
+#### **🏢 Categorie Costi Predefinite**
+- **Affitto**: canone mensile locale/deposito
+- **Assicurazioni**: polizze RC, furto, responsabilità civile
+- **Utenze**: elettricità, acqua, gas, riscaldamento
+- **Internet/Telefono**: connessioni e comunicazioni
+- **Manutenzione**: costi di mantenimento ordinario
+- **Generale**: altri costi operativi
+
+#### **⚙️ Funzionalità Gestione**
+- **CRUD Completo**: aggiungi, modifica, elimina, attiva/disattiva
+- **Frequenze Flessibili**: mensile, annuale, una tantum
+- **Conversioni Automatiche**: calcolo automatico costi mensili/annuali
+- **Date Inizio**: tracciamento periodo validità
+- **Categorizzazione**: organizzazione per tipo di spesa
+
+#### **📊 Dashboard Costi**
+- **Totali Mensili/Annuali**: visualizzazione immediate
+- **Break-Even Calcolato**: fatturato minimo necessario
+- **Impatto sui Margini**: come i costi influiscono sulla profittabilità
+- **Proiezioni**: stima costi futuri
+
+### 🔧 **Garage Avanzato con Manutenzioni**
+Il garage virtuale è stato potenziato con:
+
+#### **🛠️ Gestione Manutenzioni**
+- **Storico Completo**: tutte le manutenzioni per ogni bici
+- **Costi Manutenzione**: tracciamento spese per singola bici
+- **Tipologie**: tagliando, riparazione, sostituzione parti
+- **Meccanici**: tracciamento chi ha effettuato il lavoro
+- **Note Dettagliate**: descrizioni lavori e osservazioni
+
+#### **💰 Profittabilità per Bicicletta**
+- **Costo Totale**: acquisto + manutenzioni
+- **Ricavo Stimato**: basato su utilizzo e tariffe
+- **Profitto per Bici**: guadagno netto singola unità
+- **ROI**: ritorno investimento percentuale
+
+#### **📈 Analytics Bici**
+- **Performance Individuale**: statistiche dettagliate
+- **Confronti**: quale tipologia rende di più
+- **Utilizzo Ottimale**: suggerimenti per massimizzare ricavi
+
+### 🚀 **Sistema Backup Completo**
+Backup e ripristino ora gestiscono TUTTI i dati:
+
+#### **📦 Backup Completo Include**
+- Tutte le prenotazioni e relazioni
+- Inventario biciclette con manutenzioni
+- Impostazioni negozio complete
+- Costi fissi e configurazioni
+- Analytics e metriche storiche
+- Schema database per ripristino
+
+#### **🔄 Ripristino Intelligente**
+- **Validazione Backup**: controllo integrità file
+- **Anteprima Dati**: cosa contiene il backup prima del ripristino
+- **Conferma Sicurezza**: doppia conferma per evitare errori
+- **Ripristino Completo**: ricostruisce tutto il sistema
+- **Compatibilità Versioni**: gestisce backup di versioni precedenti
 
 ### **🔄 Gestione Quotidiana del Server**
 
@@ -525,8 +713,16 @@ sqlite3 server/rabbi_ebike.db "SELECT 'settings', COUNT(*) FROM settings UNION A
 
 ### **Backend**
 - **Node.js** con **Express**
-- **SQLite3** come database
+- **SQLite3** come database con schema avanzato
 - **CORS** per comunicazione frontend-backend
+- **Advanced Analytics APIs**:
+  - `/api/analytics/bike-performance` - Performance biciclette
+  - `/api/analytics/revenue-breakdown` - Analisi ricavi e costi
+  - `/api/fixed-costs` - Gestione CRUD costi fissi
+- **Backup System 2.0**:
+  - Export completo con schema database
+  - Import con validazione e rollback
+  - Backup automatici programmabili
 
 ## 🚨 Risoluzione Problemi Completa
 

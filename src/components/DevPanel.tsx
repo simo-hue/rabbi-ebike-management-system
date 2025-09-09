@@ -250,22 +250,27 @@ export const DevPanel = () => {
   const handleExportData = async () => {
     try {
       const data = await apiService.exportAllData();
+      
+      // Create filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('.')[0];
+      const filename = `rabbi-ebike-backup-${timestamp}.json`;
+      
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
       
       toast({
-        title: "Export completato",
-        description: "I dati sono stati esportati con successo."
+        title: "Backup Completo Creato",
+        description: `Backup salvato come ${filename}. Include tutti i dati: prenotazioni, bici, impostazioni e configurazioni.`
       });
     } catch (error) {
       toast({
-        title: "Errore export",
-        description: "Impossibile esportare i dati.",
+        title: "Errore Backup",
+        description: "Impossibile creare il backup completo.",
         variant: "destructive"
       });
     }
@@ -274,20 +279,53 @@ export const DevPanel = () => {
   const handleImportData = async (file: File) => {
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
-      await apiService.importAllData(data);
+      const backupData = JSON.parse(text);
+      
+      // Validate backup structure
+      if (!backupData.data || !backupData.version) {
+        throw new Error('File di backup non valido o formato non riconosciuto');
+      }
+      
+      // Show confirmation dialog for restore
+      const confirmed = window.confirm(
+        `⚠️ ATTENZIONE: Questa operazione sostituirà TUTTI i dati esistenti con quelli del backup.\n\n` +
+        `Backup del: ${new Date(backupData.exportDate).toLocaleString('it-IT')}\n` +
+        `Versione: ${backupData.version}\n` +
+        `Prenotazioni: ${backupData.stats?.totalBookings || 'N/A'}\n` +
+        `Biciclette: ${backupData.stats?.totalBikes || 'N/A'}\n\n` +
+        `Sei sicuro di voler continuare? Questa operazione NON è reversibile.`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      
+      // Perform restore
+      const result = await apiService.importAllData(backupData);
       
       toast({
-        title: "Import completato",
-        description: "I dati sono stati importati con successo."
+        title: "Ripristino Completo Riuscito",
+        description: `Sistema ripristinato dal backup del ${new Date(backupData.exportDate).toLocaleDateString('it-IT')}. Ricarica la pagina per vedere le modifiche.`
       });
       
+      // Refresh all data
       refetchStats();
       refetchConfig();
+      refetchPerf();
+      
+      // Suggest page reload
+      setTimeout(() => {
+        const shouldReload = window.confirm('Per vedere tutti i cambiamenti, è consigliabile ricaricare la pagina. Ricaricare ora?');
+        if (shouldReload) {
+          window.location.reload();
+        }
+      }, 2000);
+      
     } catch (error) {
+      console.error('Restore error:', error);
       toast({
-        title: "Errore import",
-        description: "Impossibile importare i dati. Verifica il formato del file.",
+        title: "Errore Ripristino",
+        description: error.message || "Impossibile ripristinare dal backup. Verifica il formato del file.",
         variant: "destructive"
       });
     }
@@ -1070,24 +1108,79 @@ export const DevPanel = () => {
         {/* Tools Tab */}
         <TabsContent value="tools" className="space-y-4">
 
-          {/* Data Management */}
+          {/* Data Management - COMPLETE BACKUP & RESTORE */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FolderIcon className="w-5 h-5" />
-                Gestione Dati
+                <DatabaseIcon className="w-5 h-5" />
+                Backup e Ripristino Completo
               </CardTitle>
               <CardDescription>
-                Export, import e backup dei dati
+                Sistema completo di backup e ripristino per tutti i dati del sistema
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button onClick={handleExportData} variant="outline">
-                  <DownloadIcon className="w-4 h-4 mr-2" />
-                  Export Dati
-                </Button>
+            <CardContent className="space-y-6">
+              
+              {/* Backup Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <DownloadIcon className="w-5 h-5 text-green-600" />
+                  <h4 className="text-lg font-semibold">Creazione Backup</h4>
+                </div>
                 
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <InfoIcon className="w-5 h-5 text-green-600 mt-0.5" />
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-green-800">
+                        Il backup completo include:
+                      </p>
+                      <ul className="text-sm text-green-700 space-y-1 ml-4">
+                        <li>• Tutte le prenotazioni e relazioni bici-prenotazioni</li>
+                        <li>• Inventario completo delle biciclette</li>
+                        <li>• Impostazioni del negozio (prezzi, orari, contatti)</li>
+                        <li>• Configurazioni del server</li>
+                        <li>• Schema del database per ripristino completo</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button 
+                    onClick={handleExportData} 
+                    className="bg-green-600 hover:bg-green-700"
+                    size="lg"
+                  >
+                    <DownloadIcon className="w-5 h-5 mr-2" />
+                    Crea Backup Completo
+                  </Button>
+                  
+                  <Button onClick={handleCreateBackup} variant="outline" size="lg">
+                    <DatabaseIcon className="w-4 h-4 mr-2" />
+                    Backup Database (.db)
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Restore Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <UploadIcon className="w-5 h-5 text-orange-600" />
+                  <h4 className="text-lg font-semibold">Ripristino Sistema</h4>
+                </div>
+                
+                <Alert className="border-orange-200 bg-orange-50">
+                  <AlertTriangleIcon className="h-4 w-4 text-orange-600" />
+                  <AlertTitle className="text-orange-800">Attenzione</AlertTitle>
+                  <AlertDescription className="text-orange-700">
+                    Il ripristino <strong>sostituirà completamente</strong> tutti i dati esistenti. 
+                    Assicurati di aver creato un backup prima di procedere. Questa operazione non è reversibile.
+                  </AlertDescription>
+                </Alert>
+
                 <div>
                   <input
                     type="file"
@@ -1097,20 +1190,62 @@ export const DevPanel = () => {
                       if (file) handleImportData(file);
                     }}
                     className="hidden"
-                    id="import-file"
+                    id="restore-file"
                   />
-                  <Button asChild variant="outline">
-                    <label htmlFor="import-file" className="cursor-pointer">
-                      <UploadIcon className="w-4 h-4 mr-2" />
-                      Import Dati
+                  <Button 
+                    asChild 
+                    variant="outline" 
+                    size="lg"
+                    className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                  >
+                    <label htmlFor="restore-file" className="cursor-pointer">
+                      <UploadIcon className="w-5 h-5 mr-2" />
+                      Ripristina da Backup
                     </label>
                   </Button>
                 </div>
-                
-                <Button onClick={handleCreateBackup} variant="outline">
-                  <DatabaseIcon className="w-4 h-4 mr-2" />
-                  Backup Manuale
-                </Button>
+              </div>
+
+              <Separator />
+
+              {/* Quick Actions */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold">Azioni Rapide</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        'Questa azione creerà un backup automatico prima di procedere con la manutenzione. Continuare?'
+                      );
+                      if (confirmed) {
+                        handleExportData();
+                        toast({
+                          title: "Backup di sicurezza creato",
+                          description: "Backup automatico creato per manutenzione."
+                        });
+                      }
+                    }}
+                    variant="outline"
+                  >
+                    <DatabaseIcon className="w-4 h-4 mr-2" />
+                    Backup di Sicurezza
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      refetchStats();
+                      refetchConfig();
+                      toast({
+                        title: "Dati aggiornati",
+                        description: "Statistiche e configurazioni ricaricate."
+                      });
+                    }}
+                    variant="outline"
+                  >
+                    <RefreshCwIcon className="w-4 h-4 mr-2" />
+                    Aggiorna Stato Sistema
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

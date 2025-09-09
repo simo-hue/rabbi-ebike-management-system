@@ -120,6 +120,40 @@ class ApiService {
     return this.fetch('/monitoring/logs');
   }
 
+  // Fixed costs management
+  async getFixedCosts() {
+    return this.fetch('/fixed-costs');
+  }
+
+  async createFixedCost(cost: any) {
+    return this.fetch('/fixed-costs', {
+      method: 'POST',
+      body: JSON.stringify(cost),
+    });
+  }
+
+  async updateFixedCost(id: string, cost: any) {
+    return this.fetch(`/fixed-costs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(cost),
+    });
+  }
+
+  async deleteFixedCost(id: string) {
+    return this.fetch(`/fixed-costs/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Analytics
+  async getBikePerformance(period = 'month') {
+    return this.fetch(`/analytics/bike-performance?period=${period}`);
+  }
+
+  async getRevenueBreakdown(period = 'month') {
+    return this.fetch(`/analytics/revenue-breakdown?period=${period}`);
+  }
+
   // Data management
   async exportAllData() {
     return this.fetch('/data/export');
