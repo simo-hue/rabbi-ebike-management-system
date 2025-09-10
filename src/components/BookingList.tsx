@@ -266,7 +266,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
             const isToday = isSameDay(day, new Date());
             
             return (
-              <Card key={day.toISOString()} className={`min-h-[150px] hover:shadow-md transition-shadow ${isToday ? 'ring-2 ring-electric-green/30' : ''}`}>
+              <Card key={day.toISOString()} className={`min-h-[150px] hover:shadow-md transition-shadow cursor-pointer ${isToday ? 'ring-2 ring-electric-green/30' : ''}`} onClick={() => handleBookingClick(day)}>
                 <CardContent className="p-3">
                   <div className={`text-sm font-medium mb-2 ${isToday ? 'text-electric-green font-bold' : ''}`}>
                     <div className="flex items-center justify-between">
@@ -294,7 +294,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                           'bg-unavailable/10 hover:bg-unavailable/20 border border-unavailable/20'
                         }`}
                         title={`${booking.customerName} - ${booking.startTime}-${booking.endTime} - ${getBikeDetailsText(booking.bikeDetails)}`}
-                        onClick={() => handleBookingClick(day)}
+                        onClick={(e) => { e.stopPropagation(); handleBookingClick(day); }}
                       >
                         <div className="font-medium truncate">{booking.customerName}</div>
                         <div className="text-muted-foreground truncate">
@@ -353,7 +353,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
           const dayBookings = bookingsByDate[dateKey] || [];
           
           return (
-            <Card key={day.toISOString()} className="min-h-[100px] hover:shadow-md transition-shadow">
+            <Card key={day.toISOString()} className="min-h-[100px] hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleBookingClick(day)}>
               <CardContent className="p-2">
                 <div className="text-sm font-medium mb-1 flex items-center justify-between">
                   <span>{format(day, "d")}</span>
@@ -364,7 +364,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                     <div 
                       key={booking.id} 
                       className="text-xs p-1 bg-electric-green/10 rounded truncate cursor-pointer hover:bg-electric-green/20 transition-colors"
-                      onClick={() => handleBookingClick(day)}
+                      onClick={(e) => { e.stopPropagation(); handleBookingClick(day); }}
                       title={`${booking.customerName} - ${booking.startTime}-${booking.endTime}`}
                     >
                       {booking.customerName}
