@@ -37,7 +37,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
     }, 0);
 
     // Calculate total available bikes
-    const totalBikesAvailable = settings.totalBikes.reduce((total, bike) => total + bike.count, 0);
+    const totalBikesAvailable = settings.bikes.filter(bike => bike.isActive).length;
 
     // Calculate availability percentage
     const availabilityPercentage = ((totalBikesAvailable - totalBikesUsed) / totalBikesAvailable) * 100;

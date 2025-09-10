@@ -26,14 +26,14 @@ npm run dev
 npm start
 ```
 
-Il server si avvierà sulla porta 3001 di default.
+Il server si avvierà sulla porta 9273 di default.
 
 ## Configurazione
 
 Il server può essere configurato tramite il pannello Developer nell'applicazione web oppure modificando direttamente i parametri del database.
 
 ### Porte
-- Default: 3001
+- Default: 9273
 - Configurabile tramite variabile ambiente `PORT` o pannello dev
 
 ### Database

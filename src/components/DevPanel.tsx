@@ -117,13 +117,13 @@ export const DevPanel = () => {
       id: 'server-install',
       title: 'Installa dipendenze server',
       description: 'Naviga nella cartella server/ ed esegui: npm install',
-      completed: false,
+      completed: isOnline, // Se il server è online, le dipendenze sono installate
       required: true
     },
     {
       id: 'server-start',
       title: 'Avvia il server locale',
-      description: 'Esegui: npm start per avviare il server sulla porta 3001',
+      description: 'Esegui: npm start per avviare il server sulla porta 9273',
       completed: isOnline,
       required: true
     },

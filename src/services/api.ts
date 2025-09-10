@@ -38,7 +38,7 @@ export interface ApiConfig {
 
 class ApiService {
   private config: ApiConfig = {
-    baseUrl: 'http://localhost:3001/api',
+    baseUrl: 'http://localhost:9273/api',
     timeout: 10000
   };
 

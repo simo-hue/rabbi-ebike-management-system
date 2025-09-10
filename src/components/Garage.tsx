@@ -33,7 +33,7 @@ interface GarageProps {
   onClose: () => void;
 }
 
-export const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
+const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
   const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
   const [isAddingBike, setIsAddingBike] = useState(false);
   const [isAddingTrailer, setIsAddingTrailer] = useState(false);

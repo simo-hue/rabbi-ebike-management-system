@@ -3,8 +3,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, SettingsIcon, PlusIcon, BikeIcon, BarChart3Icon, TrendingUpIcon, EuroIcon } from "lucide-react";
-import rabbiEbikeLogo from "@/assets/rabbi-ebike-logo.png";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { CalendarIcon, SettingsIcon, PlusIcon, BikeIcon, BarChart3Icon, TrendingUpIcon, EuroIcon, EditIcon, TrashIcon, WrenchIcon, SaveIcon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { BookingForm } from "./BookingForm";
@@ -18,12 +22,660 @@ const SettingsPanel = lazy(() => import("./SettingsPanel"));
 const Statistics = lazy(() => import("./Statistics"));
 const AdvancedAnalytics = lazy(() => import("./AdvancedAnalytics"));
 const DevPanel = lazy(() => import("./DevPanel"));
-const Garage = lazy(() => import("./Garage"));
 const FixedCostsManager = lazy(() => import("./FixedCostsManager"));
+
+// Import Garage directly to test
+import Garage from "./Garage";
 
 // Import types from dedicated file
 import type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord } from "@/types/bike";
 export type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord };
+
+// Full-Featured Garage Component
+const MinimalGarage = ({ bikes, onUpdateBikes, onClose }: { bikes: Bike[], onUpdateBikes: (bikes: Bike[]) => void, onClose: () => void }) => {
+  const { toast } = useToast();
+  const [isAddingBike, setIsAddingBike] = useState(false);
+  const [isAddingTrailer, setIsAddingTrailer] = useState(false);
+  const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
+  const [editingBike, setEditingBike] = useState<Bike | null>(null);
+  
+  const [newBike, setNewBike] = useState<Partial<Bike>>({
+    name: "",
+    brand: "",
+    model: "",
+    type: "adulto",
+    size: "M",
+    isActive: true,
+    year: new Date().getFullYear(),
+    purchasePrice: 0,
+    recommendedHeightMin: 150,
+    recommendedHeightMax: 200,
+    hasTrailerHook: false
+  });
+
+  const [newTrailer, setNewTrailer] = useState<Partial<Bike>>({
+    name: "",
+    brand: "",
+    model: "",
+    type: "trailer",
+    size: "M",
+    isActive: true,
+    year: new Date().getFullYear(),
+    purchasePrice: 0,
+    hasTrailerHook: false
+  });
+
+  const resetNewBike = () => {
+    setNewBike({
+      name: "",
+      brand: "",
+      model: "",
+      type: "adulto", 
+      size: "M",
+      isActive: true,
+      year: new Date().getFullYear(),
+      purchasePrice: 0,
+      recommendedHeightMin: 150,
+      recommendedHeightMax: 200,
+      hasTrailerHook: false
+    });
+  };
+
+  const resetNewTrailer = () => {
+    setNewTrailer({
+      name: "",
+      brand: "",
+      model: "",
+      type: "trailer",
+      size: "M",
+      isActive: true,
+      year: new Date().getFullYear(),
+      purchasePrice: 0,
+      hasTrailerHook: false
+    });
+  };
+
+  const handleAddBike = () => {
+    if (!newBike.name || !newBike.brand) {
+      toast({
+        title: "Errore",
+        description: "Nome e marca sono obbligatori",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const bikeToAdd: Bike = {
+      id: Date.now().toString(),
+      name: newBike.name,
+      brand: newBike.brand,
+      model: newBike.model || "",
+      type: newBike.type as BikeType,
+      size: newBike.size as BikeSize,
+      isActive: newBike.isActive ?? true,
+      year: newBike.year,
+      purchasePrice: newBike.purchasePrice,
+      recommendedHeightMin: newBike.recommendedHeightMin,
+      recommendedHeightMax: newBike.recommendedHeightMax,
+      hasTrailerHook: newBike.hasTrailerHook ?? false,
+      maintenanceHistory: []
+    };
+
+    onUpdateBikes([...bikes, bikeToAdd]);
+    resetNewBike();
+    setIsAddingBike(false);
+    
+    toast({
+      title: "Successo",
+      description: `${bikeToAdd.name} è stata aggiunta al garage`
+    });
+  };
+
+  const handleAddTrailer = () => {
+    if (!newTrailer.name || !newTrailer.brand) {
+      toast({
+        title: "Errore",
+        description: "Nome e marca sono obbligatori",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const trailerToAdd: Bike = {
+      id: Date.now().toString(),
+      name: newTrailer.name,
+      brand: newTrailer.brand,
+      model: newTrailer.model || "",
+      type: "trailer" as BikeType,
+      size: newTrailer.size as BikeSize,
+      isActive: newTrailer.isActive ?? true,
+      year: newTrailer.year,
+      purchasePrice: newTrailer.purchasePrice,
+      hasTrailerHook: false, // I carrelli non hanno ganci
+      maintenanceHistory: []
+    };
+
+    onUpdateBikes([...bikes, trailerToAdd]);
+    resetNewTrailer();
+    setIsAddingTrailer(false);
+    
+    toast({
+      title: "Successo",
+      description: `${trailerToAdd.name} è stato aggiunto al garage`
+    });
+  };
+
+  const handleEditBike = (bike: Bike) => {
+    const updatedBikes = bikes.map(b => b.id === bike.id ? bike : b);
+    onUpdateBikes(updatedBikes);
+    setEditingBike(null);
+    toast({
+      title: "Successo", 
+      description: "Bicicletta modificata con successo"
+    });
+  };
+
+  const handleDeleteBike = (bikeId: string) => {
+    const bikeToDelete = bikes.find(b => b.id === bikeId);
+    onUpdateBikes(bikes.filter(b => b.id !== bikeId));
+    toast({
+      title: "Successo",
+      description: `${bikeToDelete?.name} è stata rimossa dal garage`,
+      variant: "destructive"
+    });
+  };
+
+  const toggleBikeStatus = (bikeId: string) => {
+    const updatedBikes = bikes.map(bike => 
+      bike.id === bikeId ? { ...bike, isActive: !bike.isActive } : bike
+    );
+    onUpdateBikes(updatedBikes);
+    const bike = bikes.find(b => b.id === bikeId);
+    toast({
+      title: "Status aggiornato",
+      description: `${bike?.name} è ora ${bike?.isActive ? 'non attiva' : 'attiva'}`
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background z-50 p-6 overflow-auto">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-6 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-r from-electric-green to-electric-green-light rounded-xl flex items-center justify-center">
+              <WrenchIcon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Garage Biciclette</h1>
+              <p className="text-sm text-muted-foreground">Gestisci il tuo inventario di biciclette e carrelli</p>
+            </div>
+          </div>
+          <Button 
+            onClick={onClose}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <CalendarIcon className="w-4 h-4" />
+            Torna alla Dashboard
+          </Button>
+        </div>
+        
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <BikeIcon className="w-4 h-4 text-electric-green" />
+                <span className="text-sm font-medium">Totale Bici</span>
+              </div>
+              <p className="text-2xl font-bold text-electric-green">{bikes.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Badge className="w-2 h-2 bg-available rounded-full p-0" />
+                <span className="text-sm font-medium">Attive</span>
+              </div>
+              <p className="text-2xl font-bold text-available">{bikes.filter(b => b.isActive).length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Badge className="w-2 h-2 bg-unavailable rounded-full p-0" />
+                <span className="text-sm font-medium">Non Attive</span>
+              </div>
+              <p className="text-2xl font-bold text-unavailable">{bikes.filter(b => !b.isActive).length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <EuroIcon className="w-4 h-4 text-electric-green" />
+                <span className="text-sm font-medium">Valore Totale</span>
+              </div>
+              <p className="text-2xl font-bold text-electric-green">
+                €{bikes.reduce((sum, bike) => sum + (bike.purchasePrice || 0), 0).toLocaleString()}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Main Content */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <BikeIcon className="w-5 h-5 text-electric-green" />
+                  Inventario Biciclette
+                </CardTitle>
+                <CardDescription>
+                  Gestisci le tue biciclette elettriche e i carrelli porta-bambini
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setIsAddingBike(true)} 
+                  className="bg-gradient-to-r from-electric-green to-electric-green-light hover:from-electric-green-dark hover:to-electric-green flex items-center gap-2"
+                >
+                  <BikeIcon className="w-4 h-4" />
+                  Aggiungi E-Bike
+                </Button>
+                <Button 
+                  onClick={() => setIsAddingTrailer(true)} 
+                  variant="outline" 
+                  className="border-electric-green/30 text-electric-green hover:bg-electric-green/10 flex items-center gap-2"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Aggiungi Carrello
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            {bikes && bikes.length > 0 ? (
+              <div className="grid gap-4">
+                {bikes.map((bike) => (
+                  <Card key={bike.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 bg-gradient-to-r from-electric-green to-electric-green-light rounded-lg flex items-center justify-center">
+                              <BikeIcon className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">{bike.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {bike.brand} {bike.model && `• ${bike.model}`}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2 mb-3">
+                            <Badge variant="secondary" className="text-xs">
+                              {bike.type === 'bambino' ? '👶 Bambino' : bike.type === 'adulto' ? '👨 Adulto' : bike.type === 'trailer' ? '🚚 Carrello' : bike.type}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              Taglia {bike.size}
+                            </Badge>
+                            {bike.year && (
+                              <Badge variant="outline" className="text-xs">
+                                {bike.year}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            {bike.recommendedHeightMin && bike.recommendedHeightMax && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-electric-green rounded-full"></div>
+                                <span>Altezza: {bike.recommendedHeightMin}-{bike.recommendedHeightMax}cm</span>
+                              </div>
+                            )}
+                            {bike.hasTrailerHook && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-available rounded-full"></div>
+                                <span>Gancio carrello</span>
+                              </div>
+                            )}
+                            {bike.purchasePrice && (
+                              <div className="flex items-center gap-2">
+                                <EuroIcon className="w-3 h-3 text-electric-green" />
+                                <span>€{bike.purchasePrice}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            className={`cursor-pointer transition-colors ${
+                              bike.isActive 
+                                ? 'bg-available text-white hover:bg-available/80' 
+                                : 'bg-unavailable text-white hover:bg-unavailable/80'
+                            }`}
+                            onClick={() => toggleBikeStatus(bike.id)}
+                          >
+                            {bike.isActive ? 'Attiva' : 'Non attiva'}
+                          </Badge>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => setEditingBike(bike)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <EditIcon className="w-3 h-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleDeleteBike(bike.id)} 
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <TrashIcon className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gradient-to-r from-electric-green/20 to-electric-green-light/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BikeIcon className="w-8 h-8 text-electric-green" />
+                </div>
+                <p className="text-lg font-medium mb-2">Nessuna bicicletta nel garage</p>
+                <p className="text-sm text-muted-foreground mb-4">Aggiungi la tua prima bicicletta per iniziare</p>
+                <Button onClick={() => setIsAddingBike(true)} className="bg-gradient-to-r from-electric-green to-electric-green-light">
+                  <BikeIcon className="w-4 h-4 mr-2" />
+                  Aggiungi Prima Bici
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+        {/* Add Bike Dialog */}
+        <Dialog open={isAddingBike} onOpenChange={setIsAddingBike}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Aggiungi Nuova Bicicletta</DialogTitle>
+              <DialogDescription>
+                Inserisci i dettagli della nuova bicicletta
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bikeName">Nome *</Label>
+                  <Input
+                    id="bikeName"
+                    value={newBike.name}
+                    onChange={(e) => setNewBike({ ...newBike, name: e.target.value })}
+                    placeholder="Es. E-Bike Mountain Pro"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="bikeBrand">Marca *</Label>
+                  <Input
+                    id="bikeBrand"
+                    value={newBike.brand}
+                    onChange={(e) => setNewBike({ ...newBike, brand: e.target.value })}
+                    placeholder="Es. Trek, Specialized, etc."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bikeModel">Modello</Label>
+                <Input
+                  id="bikeModel"
+                  value={newBike.model}
+                  onChange={(e) => setNewBike({ ...newBike, model: e.target.value })}
+                  placeholder="Es. Powerfly 5"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select value={newBike.type} onValueChange={(value: BikeType) => setNewBike({ ...newBike, type: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="adulto">Adulto</SelectItem>
+                      <SelectItem value="bambino">Bambino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Taglia</Label>
+                  <Select value={newBike.size} onValueChange={(value: BikeSize) => setNewBike({ ...newBike, size: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="S">S</SelectItem>
+                      <SelectItem value="M">M</SelectItem>
+                      <SelectItem value="L">L</SelectItem>
+                      <SelectItem value="XL">XL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bikeYear">Anno</Label>
+                  <Input
+                    id="bikeYear"
+                    type="number"
+                    value={newBike.year || ""}
+                    onChange={(e) => setNewBike({ ...newBike, year: parseInt(e.target.value) || undefined })}
+                    placeholder="2024"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bikePrice">Prezzo Acquisto (€)</Label>
+                  <Input
+                    id="bikePrice"
+                    type="number"
+                    step="0.01"
+                    value={newBike.purchasePrice || ""}
+                    onChange={(e) => setNewBike({ ...newBike, purchasePrice: parseFloat(e.target.value) || undefined })}
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2 pt-8">
+                  <Switch
+                    id="bikeActive"
+                    checked={newBike.isActive}
+                    onCheckedChange={(checked) => setNewBike({ ...newBike, isActive: checked })}
+                  />
+                  <Label htmlFor="bikeActive">Attiva</Label>
+                </div>
+              </div>
+
+              {/* Altezza consigliata */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Range Altezza Consigliata (cm)</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="heightMin" className="text-xs text-gray-500">Altezza minima</Label>
+                    <Input
+                      id="heightMin"
+                      type="number"
+                      min="50"
+                      max="250"
+                      value={newBike.recommendedHeightMin || ""}
+                      onChange={(e) => setNewBike({ ...newBike, recommendedHeightMin: parseInt(e.target.value) || undefined })}
+                      placeholder="150"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="heightMax" className="text-xs text-gray-500">Altezza massima</Label>
+                    <Input
+                      id="heightMax"
+                      type="number"
+                      min="50"
+                      max="250"
+                      value={newBike.recommendedHeightMax || ""}
+                      onChange={(e) => setNewBike({ ...newBike, recommendedHeightMax: parseInt(e.target.value) || undefined })}
+                      placeholder="200"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Indica il range di altezza raccomandato per l'uso sicuro della bicicletta</p>
+              </div>
+
+              {/* Gancio carrello */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="trailerHook" className="font-medium">Gancio per Carrello</Label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Questa bicicletta può trainare un carrello porta-bimbi o bagagli
+                    </p>
+                  </div>
+                  <Switch
+                    id="trailerHook"
+                    checked={newBike.hasTrailerHook ?? false}
+                    onCheckedChange={(checked) => setNewBike({ ...newBike, hasTrailerHook: checked })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setIsAddingBike(false)}>
+                  Annulla
+                </Button>
+                <Button onClick={handleAddBike}>
+                  <SaveIcon className="w-4 h-4 mr-2" />
+                  Salva Bicicletta
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Trailer Dialog */}
+        <Dialog open={isAddingTrailer} onOpenChange={setIsAddingTrailer}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>🚚 Aggiungi Nuovo Carrello</DialogTitle>
+              <DialogDescription>
+                Inserisci i dettagli del nuovo carrello porta-bimbi o bagagli
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="trailerName">Nome *</Label>
+                  <Input
+                    id="trailerName"
+                    value={newTrailer.name}
+                    onChange={(e) => setNewTrailer({ ...newTrailer, name: e.target.value })}
+                    placeholder="Es. Carrello Porta-Bimbi Deluxe"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="trailerBrand">Marca *</Label>
+                  <Input
+                    id="trailerBrand"
+                    value={newTrailer.brand}
+                    onChange={(e) => setNewTrailer({ ...newTrailer, brand: e.target.value })}
+                    placeholder="Es. Thule, Burley, Hamax"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="trailerModel">Modello</Label>
+                <Input
+                  id="trailerModel"
+                  value={newTrailer.model}
+                  onChange={(e) => setNewTrailer({ ...newTrailer, model: e.target.value })}
+                  placeholder="Es. Chariot CX, D'Lite X"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="trailerYear">Anno</Label>
+                  <Input
+                    id="trailerYear"
+                    type="number"
+                    value={newTrailer.year || ""}
+                    onChange={(e) => setNewTrailer({ ...newTrailer, year: parseInt(e.target.value) || undefined })}
+                    placeholder="2024"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trailerPrice">Prezzo Acquisto (€)</Label>
+                  <Input
+                    id="trailerPrice"
+                    type="number"
+                    step="0.01"
+                    value={newTrailer.purchasePrice || ""}
+                    onChange={(e) => setNewTrailer({ ...newTrailer, purchasePrice: parseFloat(e.target.value) || undefined })}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="trailerActive" className="font-medium">Carrello Attivo</Label>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Disponibile per il noleggio e prenotazioni
+                    </p>
+                  </div>
+                  <Switch
+                    id="trailerActive"
+                    checked={newTrailer.isActive ?? true}
+                    onCheckedChange={(checked) => setNewTrailer({ ...newTrailer, isActive: checked })}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-700">
+                  💡 <strong>Nota:</strong> I carrelli non hanno campi per altezza consigliata o ganci, 
+                  in quanto sono progettati per essere trainati dalle biciclette elettriche.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setIsAddingTrailer(false)}>
+                  Annulla
+                </Button>
+                <Button onClick={handleAddTrailer} className="bg-orange-500 hover:bg-orange-600">
+                  <SaveIcon className="w-4 h-4 mr-2" />
+                  Salva Carrello
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+    </div>
+  );
+};
 
 export type BookingCategory = "hourly" | "half-day" | "full-day";
 
@@ -188,12 +840,50 @@ export const Dashboard = () => {
   const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false);
   const [showGarage, setShowGarage] = useState(false);
   const [showFixedCostsManager, setShowFixedCostsManager] = useState(false);
+  const [showDevPanel, setShowDevPanel] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { isOnline } = useServerStatus();
+
+  // Navigation helper functions
+  const resetAllViews = () => {
+    setShowBookingForm(false);
+    setShowSettings(false);
+    setShowStatistics(false);
+    setShowAdvancedAnalytics(false);
+    setShowGarage(false);
+    setShowFixedCostsManager(false);
+    setShowDevPanel(false);
+  };
+  
+  const navigateToView = (viewName: string) => {
+    resetAllViews();
+    switch (viewName) {
+      case 'booking':
+        setShowBookingForm(true);
+        break;
+      case 'settings':
+        setShowSettings(true);
+        break;
+      case 'statistics':
+        setShowStatistics(true);
+        break;
+      case 'analytics':
+        setShowAdvancedAnalytics(true);
+        break;
+      case 'garage':
+        setShowGarage(true);
+        break;
+      case 'costs':
+        setShowFixedCostsManager(true);
+        break;
+      default:
+        break;
+    }
+  };
 
   // Load data from server on component mount
   useEffect(() => {
@@ -283,7 +973,7 @@ export const Dashboard = () => {
 
       setBookings([...bookings, newBooking]);
     }
-    setShowBookingForm(false);
+    resetAllViews();
   };
 
   const handleEditBooking = (booking: Booking) => {
@@ -353,7 +1043,7 @@ export const Dashboard = () => {
     
     // Group garage bikes by type/size/suspension/hasTrailerHook and count available
     const bikeGroups: Record<string, BikeDetails> = {};
-    settings.bikes.filter(bike => bike.isActive).forEach(bike => {
+    settings.bikes.filter(bike => bike.isActive !== false).forEach(bike => {
       const key = `${bike.type}-${bike.size}-${bike.suspension}-${bike.hasTrailerHook}`;
       if (!bikeGroups[key]) {
         bikeGroups[key] = {
@@ -419,7 +1109,7 @@ export const Dashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowStatistics(true)}
+                onClick={() => navigateToView('statistics')}
                 className="gap-2"
               >
                 <BarChart3Icon className="w-4 h-4" />
@@ -429,7 +1119,7 @@ export const Dashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowAdvancedAnalytics(true)}
+                onClick={() => navigateToView('analytics')}
                 className="gap-2"
               >
                 <TrendingUpIcon className="w-4 h-4" />
@@ -439,7 +1129,7 @@ export const Dashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowGarage(true)}
+                onClick={() => navigateToView('garage')}
                 className="gap-2"
               >
                 <BikeIcon className="w-4 h-4" />
@@ -449,7 +1139,7 @@ export const Dashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowFixedCostsManager(true)}
+                onClick={() => navigateToView('costs')}
                 className="gap-2"
               >
                 <EuroIcon className="w-4 h-4" />
@@ -458,14 +1148,14 @@ export const Dashboard = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowSettings(true)}
+                onClick={() => navigateToView('settings')}
                 className="gap-2"
               >
                 <SettingsIcon className="w-4 h-4" />
                 Impostazioni
               </Button>
               <Button
-                onClick={() => setShowBookingForm(true)}
+                onClick={() => navigateToView('booking')}
                 className="gap-2 bg-gradient-to-r from-electric-green to-electric-green-light hover:from-electric-green-dark hover:to-electric-green shadow-[var(--shadow-button)]"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -592,7 +1282,7 @@ export const Dashboard = () => {
         <BookingForm
           onSubmit={addBooking}
           onClose={() => {
-            setShowBookingForm(false);
+            resetAllViews();
             setEditingBooking(null);
           }}
           selectedDate={selectedDate}
@@ -607,7 +1297,7 @@ export const Dashboard = () => {
           <SettingsPanel
             settings={settings}
             onSave={handleSaveSettings}
-            onClose={() => setShowSettings(false)}
+            onClose={() => resetAllViews()}
           />
         </Suspense>
       )}
@@ -617,7 +1307,7 @@ export const Dashboard = () => {
           <Statistics
             bookings={bookings}
             settings={settings}
-            onClose={() => setShowStatistics(false)}
+            onClose={() => resetAllViews()}
           />
         </Suspense>
       )}
@@ -627,29 +1317,36 @@ export const Dashboard = () => {
           <AdvancedAnalytics
             bookings={bookings}
             settings={settings}
-            onClose={() => setShowAdvancedAnalytics(false)}
+            onClose={() => resetAllViews()}
           />
         </Suspense>
       )}
 
       {showGarage && (
-        <Suspense fallback={<div className="p-8 text-center">Caricamento garage...</div>}>
-          <Garage
-            bikes={settings.bikes || []}
-            onUpdateBikes={(bikes) => {
-              const updatedSettings = { ...settings, bikes };
-              setSettings(updatedSettings);
-              handleSaveSettings(updatedSettings);
-            }}
-            onClose={() => setShowGarage(false)}
-          />
-        </Suspense>
+        <MinimalGarage
+          bikes={settings.bikes || []}
+          onUpdateBikes={(updatedBikes) => {
+            const newSettings = { ...settings, bikes: updatedBikes };
+            setSettings(newSettings);
+          }}
+          onClose={() => resetAllViews()}
+        />
       )}
 
       {showFixedCostsManager && (
         <Suspense fallback={<div className="p-8 text-center">Caricamento gestione costi...</div>}>
           <FixedCostsManager
-            onClose={() => setShowFixedCostsManager(false)}
+            onClose={() => resetAllViews()}
+          />
+        </Suspense>
+      )}
+
+      {showDevPanel && (
+        <Suspense fallback={<div className="p-8 text-center">Caricamento pannello sviluppatore...</div>}>
+          <DevPanel
+            onClose={() => resetAllViews()}
+            settings={settings}
+            onSettingsUpdate={setSettings}
           />
         </Suspense>
       )}

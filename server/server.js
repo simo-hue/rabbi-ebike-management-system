@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 9273;
 
 // Performance monitoring variables
 let requestCount = 0;
@@ -162,65 +162,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
-// Database query monitoring wrapper
-const originalRun = db.run;
-const originalGet = db.get;
-const originalAll = db.all;
-
-db.run = function(sql, params, callback) {
-  const start = Date.now();
-  return originalRun.call(this, sql, params, function(err) {
-    const duration = Date.now() - start;
-    if (duration > 100) { // Log slow queries
-      addLog('warn', 'Slow database query', {
-        sql: sql.substring(0, 100) + '...',
-        duration: `${duration}ms`,
-        type: 'run'
-      });
-    }
-    if (err) {
-      addLog('error', 'Database run error', { sql: sql.substring(0, 100), error: err.message });
-    }
-    if (callback) callback.call(this, err);
-  });
-};
-
-db.get = function(sql, params, callback) {
-  const start = Date.now();
-  return originalGet.call(this, sql, params, function(err, row) {
-    const duration = Date.now() - start;
-    if (duration > 100) {
-      addLog('warn', 'Slow database query', {
-        sql: sql.substring(0, 100) + '...',
-        duration: `${duration}ms`,
-        type: 'get'
-      });
-    }
-    if (err) {
-      addLog('error', 'Database get error', { sql: sql.substring(0, 100), error: err.message });
-    }
-    if (callback) callback.call(this, err, row);
-  });
-};
-
-db.all = function(sql, params, callback) {
-  const start = Date.now();
-  return originalAll.call(this, sql, params, function(err, rows) {
-    const duration = Date.now() - start;
-    if (duration > 100) {
-      addLog('warn', 'Slow database query', {
-        sql: sql.substring(0, 100) + '...',
-        duration: `${duration}ms`,
-        type: 'all',
-        resultCount: rows ? rows.length : 0
-      });
-    }
-    if (err) {
-      addLog('error', 'Database all error', { sql: sql.substring(0, 100), error: err.message });
-    }
-    if (callback) callback.call(this, err, rows);
-  });
-};
+// Database query monitoring wrapper - DISABLED due to deadlock
+// const originalRun = db.run;
+// const originalGet = db.get;
+// const originalAll = db.all;
 
 // Initialize database tables
 db.serialize(() => {
@@ -328,14 +273,50 @@ db.serialize(() => {
   // Server configuration table
   db.run(`CREATE TABLE IF NOT EXISTS server_config (
     id INTEGER PRIMARY KEY,
-    server_port INTEGER DEFAULT 3001,
+    server_port INTEGER DEFAULT 7421,
     auto_backup BOOLEAN DEFAULT 1,
     backup_interval_hours INTEGER DEFAULT 24,
     max_backup_files INTEGER DEFAULT 30,
     debug_mode BOOLEAN DEFAULT 0,
+    notification_email TEXT,
+    sms_notifications BOOLEAN DEFAULT 0,
+    maintenance_reminder_days INTEGER DEFAULT 30,
+    low_battery_alert BOOLEAN DEFAULT 1,
+    auto_pricing_updates BOOLEAN DEFAULT 0,
+    peak_hour_multiplier REAL DEFAULT 1.5,
+    seasonal_discount REAL DEFAULT 0,
+    minimum_booking_hours INTEGER DEFAULT 1,
+    max_booking_days INTEGER DEFAULT 7,
+    weather_integration BOOLEAN DEFAULT 0,
+    gps_tracking BOOLEAN DEFAULT 0,
+    insurance_required BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  // Add missing columns to existing server_config table for backward compatibility
+  const addColumnIfNotExists = (tableName, columnName, columnDefinition) => {
+    db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`, (err) => {
+      // Ignore duplicate column errors - they're expected
+      if (err && !err.message.includes('duplicate column name')) {
+        console.warn(`Error adding column ${columnName}: ${err.message}`);
+      }
+    });
+  };
+
+  // Add all new columns if they don't exist - errors are handled in callback
+  addColumnIfNotExists('server_config', 'notification_email', 'TEXT');
+  addColumnIfNotExists('server_config', 'sms_notifications', 'BOOLEAN DEFAULT 0');
+  addColumnIfNotExists('server_config', 'maintenance_reminder_days', 'INTEGER DEFAULT 30');
+  addColumnIfNotExists('server_config', 'low_battery_alert', 'BOOLEAN DEFAULT 1');
+  addColumnIfNotExists('server_config', 'auto_pricing_updates', 'BOOLEAN DEFAULT 0');
+  addColumnIfNotExists('server_config', 'peak_hour_multiplier', 'REAL DEFAULT 1.5');
+  addColumnIfNotExists('server_config', 'seasonal_discount', 'REAL DEFAULT 0');
+  addColumnIfNotExists('server_config', 'minimum_booking_hours', 'INTEGER DEFAULT 1');
+  addColumnIfNotExists('server_config', 'max_booking_days', 'INTEGER DEFAULT 7');
+  addColumnIfNotExists('server_config', 'weather_integration', 'BOOLEAN DEFAULT 0');
+  addColumnIfNotExists('server_config', 'gps_tracking', 'BOOLEAN DEFAULT 0');
+  addColumnIfNotExists('server_config', 'insurance_required', 'BOOLEAN DEFAULT 0');
 
   // Add check constraints for data integrity (SQLite limitations, we'll do this programmatically)
   // This will be enforced in the validation helpers we added
@@ -498,14 +479,23 @@ app.get('/api/health', (req, res) => {
 
 // Settings endpoints
 app.get('/api/settings', (req, res) => {
+  addLog('debug', 'Settings endpoint called');
+  
   db.get("SELECT * FROM settings WHERE id = 1", (err, settings) => {
+    addLog('debug', 'Settings query result', { err: err?.message, hasSettings: !!settings });
+    
     if (err) {
-      return res.status(500).json({ error: err.message });
+      return handleDatabaseError(res, err, 'fetching settings');
     }
     
+    if (!settings) {
+      return res.status(404).json({ error: "Settings not found" });
+    }
+    
+    // Now get bikes data since settings query works
     db.all("SELECT * FROM bikes ORDER BY type, size, suspension", (err, bikes) => {
       if (err) {
-        return res.status(500).json({ error: err.message });
+        return handleDatabaseError(res, err, 'fetching bikes');
       }
       
       res.json({
@@ -523,7 +513,7 @@ app.get('/api/settings', (req, res) => {
           trailerHalfDay: settings.pricing_trailer_half_day || 20,
           trailerFullDay: settings.pricing_trailer_full_day || 35
         },
-        totalBikes: bikes.map(bike => ({
+        bikes: bikes.map(bike => ({
           type: bike.type,
           size: bike.size,
           suspension: bike.suspension,
@@ -535,7 +525,7 @@ app.get('/api/settings', (req, res) => {
 });
 
 app.put('/api/settings', (req, res) => {
-  const { shopName, phone, email, openingTime, closingTime, pricing, totalBikes } = req.body;
+  const { shopName, phone, email, openingTime, closingTime, pricing, bikes } = req.body;
   
   db.run(`UPDATE settings SET 
     shop_name = ?, phone = ?, email = ?, opening_time = ?, closing_time = ?,
@@ -558,7 +548,7 @@ app.put('/api/settings', (req, res) => {
       }
       
       const stmt = db.prepare("INSERT INTO bikes (type, size, suspension, count) VALUES (?, ?, ?, ?)");
-      totalBikes.forEach(bike => {
+      bikes.forEach(bike => {
         stmt.run([bike.type, bike.size, bike.suspension, bike.count]);
       });
       stmt.finalize();
@@ -595,22 +585,36 @@ app.post('/api/fixed-costs', (req, res) => {
 
 app.put('/api/fixed-costs/:id', (req, res) => {
   const { id } = req.params;
-  const { name, description, amount, category, frequency, startDate, isActive } = req.body;
+  const updates = req.body;
   
-  db.run(`UPDATE fixed_costs SET 
-    name = ?, description = ?, amount = ?, category = ?, frequency = ?, start_date = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?`, 
-    [name, description, amount, category, frequency, startDate, isActive ? 1 : 0, id], 
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Costo fisso non trovato' });
-      }
-      res.json({ message: 'Costo fisso aggiornato con successo' });
+  const allowedFields = ['name', 'description', 'amount', 'category', 'frequency', 'start_date', 'is_active'];
+  const setClause = [];
+  const values = [];
+  
+  Object.keys(updates).forEach(key => {
+    const dbField = key === 'startDate' ? 'start_date' : key === 'isActive' ? 'is_active' : key;
+    if (allowedFields.includes(dbField)) {
+      setClause.push(`${dbField} = ?`);
+      values.push(key === 'isActive' ? (updates[key] ? 1 : 0) : updates[key]);
     }
-  );
+  });
+  
+  if (setClause.length === 0) {
+    return res.status(400).json({ error: 'Nessun campo valido da aggiornare' });
+  }
+  
+  setClause.push('updated_at = CURRENT_TIMESTAMP');
+  values.push(id);
+  
+  db.run(`UPDATE fixed_costs SET ${setClause.join(', ')} WHERE id = ?`, values, function(err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Costo fisso non trovato' });
+    }
+    res.json({ message: 'Costo fisso aggiornato con successo' });
+  });
 });
 
 app.delete('/api/fixed-costs/:id', (req, res) => {
@@ -840,10 +844,13 @@ app.get('/api/bookings', (req, res) => {
 });
 
 app.post('/api/bookings', (req, res) => {
-  const { id, customerName, phone, email, startTime, endTime, date, category, needsGuide, status, totalPrice, bikeDetails } = req.body;
+  const { customerName, phone, email, startTime, endTime, date, category, needsGuide, status, totalPrice, bikeDetails } = req.body;
+  
+  // Generate unique ID for the booking
+  const id = Date.now().toString();
   
   // Validate required fields
-  const missing = validateRequired(['id', 'customerName', 'phone', 'startTime', 'endTime', 'date', 'category'], req.body);
+  const missing = validateRequired(['customerName', 'phone', 'startTime', 'endTime', 'date', 'category'], req.body);
   if (missing.length > 0) {
     return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
   }
@@ -885,7 +892,8 @@ app.post('/api/bookings', (req, res) => {
   }
 
   // Validate price
-  if (typeof totalPrice !== 'number' || totalPrice < 0) {
+  const parsedPrice = parseFloat(totalPrice);
+  if (isNaN(parsedPrice) || parsedPrice < 0) {
     return res.status(400).json({ error: 'Invalid total price' });
   }
 
@@ -895,17 +903,23 @@ app.post('/api/bookings', (req, res) => {
   }
 
   // Validate each bike detail
+  console.log('[DEBUG] Validating bikeDetails:', JSON.stringify(bikeDetails, null, 2));
   for (const bike of bikeDetails) {
+    console.log('[DEBUG] Validating bike:', JSON.stringify(bike, null, 2));
     if (!validateBikeType(bike.type)) {
+      console.log('[ERROR] Invalid bike type:', bike.type);
       return res.status(400).json({ error: `Invalid bike type: ${bike.type}` });
     }
     if (!validateBikeSize(bike.size)) {
+      console.log('[ERROR] Invalid bike size:', bike.size);
       return res.status(400).json({ error: `Invalid bike size: ${bike.size}` });
     }
     if (!validateBikeSuspension(bike.suspension)) {
+      console.log('[ERROR] Invalid bike suspension:', bike.suspension);
       return res.status(400).json({ error: `Invalid bike suspension: ${bike.suspension}` });
     }
     if (!Number.isInteger(bike.count) || bike.count <= 0) {
+      console.log('[ERROR] Invalid bike count:', bike.count);
       return res.status(400).json({ error: 'Bike count must be a positive integer' });
     }
   }
@@ -920,7 +934,7 @@ app.post('/api/bookings', (req, res) => {
       category, needs_guide, status, total_price
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
       id, customerName.trim(), phone.trim(), email?.trim() || null, startTime, endTime, 
-      bookingDate, category, needsGuide, status, totalPrice
+      bookingDate, category, needsGuide, status, parsedPrice
     ], function(err) {
       if (err) {
         db.run("ROLLBACK");
@@ -1052,8 +1066,8 @@ app.get('/api/database/stats', (req, res) => {
     const stats = db.prepare(`
       SELECT 
         (SELECT COUNT(*) FROM bookings) as totalBookings,
-        (SELECT COUNT(DISTINCT bike_type) FROM bookings) as totalBikeTypes,
-        (SELECT COUNT(DISTINCT bike_number) FROM bookings) as totalBikes
+        (SELECT COUNT(DISTINCT bb.bike_type) FROM booking_bikes bb) as totalBikeTypes,
+        (SELECT SUM(bb.bike_count) FROM booking_bikes bb) as totalBikes
     `).get();
     
     // Get database file size
@@ -1376,7 +1390,7 @@ app.post('/api/data/import', (req, res) => {
           
           configStmt.run([
             1, // Always use ID 1 for main config
-            config.server_port || 3001,
+            config.server_port || 7421,
             config.auto_backup !== undefined ? config.auto_backup : 1,
             config.backup_interval_hours || 24,
             config.max_backup_files || 30,
