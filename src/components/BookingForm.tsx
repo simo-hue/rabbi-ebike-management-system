@@ -172,9 +172,6 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
       newErrors.customerName = "Nome cliente obbligatorio";
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Numero di telefono obbligatorio";
-    }
 
     if (selectedBikes.length === 0) {
       newErrors.bikes = "Selezionare almeno 1 bici";
@@ -208,6 +205,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
       bikeDetails: selectedBikes,
       customers: customers.filter(c => c.name.trim() !== ""),
       date: selectedDate,
+      phone: formData.phone || undefined,
       email: formData.email || undefined
     });
   };
@@ -280,18 +278,14 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
             <div className="space-y-2">
               <Label htmlFor="phone" className="flex items-center gap-2">
                 <PhoneIcon className="w-4 h-4" />
-                Telefono *
+                Telefono (opzionale)
               </Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="+39 123 456 7890"
-                className={errors.phone ? "border-destructive" : ""}
               />
-              {errors.phone && (
-                <p className="text-sm text-destructive">{errors.phone}</p>
-              )}
             </div>
           </div>
 

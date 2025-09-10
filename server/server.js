@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const logger = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 9273;
@@ -13,24 +14,14 @@ let errorCount = 0;
 let totalResponseTime = 0;
 const startTime = Date.now();
 
-// In-memory log storage
-const logs = [];
-const maxLogs = 100;
-
+// Legacy log compatibility - redirect to new logger
 const addLog = (level, message, details = null) => {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    details
-  };
-  
-  logs.unshift(logEntry);
-  if (logs.length > maxLogs) {
-    logs.pop();
+  const logMethod = level.toLowerCase();
+  if (typeof logger[logMethod] === 'function') {
+    logger[logMethod]('LEGACY', message, details || {});
+  } else {
+    logger.info('LEGACY', `[${level.toUpperCase()}] ${message}`, details || {});
   }
-  
-  console.log(`[${level.toUpperCase()}] ${message}`, details || '');
 };
 
 // Enhanced error handling helper
@@ -137,13 +128,40 @@ app.use((req, res, next) => {
       errorCount++;
     }
     
-    // Log slow requests (>1000ms)
+    // Use new logger for request logging
+    logger.logRequest(req, res, start);
+    
+    // Enhanced performance logging for slow requests
     if (duration > 1000) {
+      logger.warn('PERFORMANCE', 'Slow request detected', {
+        requestId,
+        method: req.method,
+        path: req.path,
+        duration: `${duration}ms`,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip || req.connection.remoteAddress,
+        queryParams: Object.keys(req.query).length,
+        bodySize: JSON.stringify(req.body).length
+      });
+      
       addLog('warn', 'Slow request detected', {
         requestId,
         method: req.method,
         path: req.path,
         duration: `${duration}ms`
+      });
+    }
+    
+    // Track error responses with enhanced logging
+    if (res.statusCode >= 500) {
+      logger.error('HTTP_ERROR', `Server error response`, {
+        requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        duration: `${duration}ms`,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip || req.connection.remoteAddress
       });
     }
   });
@@ -156,9 +174,35 @@ const dbPath = path.join(__dirname, 'rabbi_ebike.db');
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     addLog('error', 'Failed to open database', err.message);
+    logger.error('DATABASE', 'Failed to connect to SQLite database', {
+      dbPath,
+      error: err.message,
+      errorCode: err.code,
+      errno: err.errno,
+      timestamp: new Date().toISOString()
+    });
     process.exit(1);
   } else {
     addLog('info', `Database connected successfully: ${dbPath}`);
+    logger.info('DATABASE', 'Successfully connected to SQLite database', {
+      dbPath,
+      filename: path.basename(dbPath),
+      mode: 'READWRITE',
+      timestamp: new Date().toISOString()
+    });
+    
+    // Log database initialization
+    logger.logDatabase('connected', {
+      path: dbPath,
+      size: (() => {
+        try {
+          const fs = require('fs');
+          return fs.statSync(dbPath).size;
+        } catch (e) {
+          return 0;
+        }
+      })()
+    });
   }
 });
 
@@ -188,13 +232,36 @@ db.serialize(() => {
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Bikes table
+  // Bikes table (legacy - for compatibility)
   db.run(`CREATE TABLE IF NOT EXISTS bikes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL,
     size TEXT NOT NULL,
     suspension TEXT NOT NULL,
     count INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // Individual bikes table (new - for garage management)
+  db.run(`CREATE TABLE IF NOT EXISTS individual_bikes (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    brand TEXT NOT NULL,
+    model TEXT,
+    type TEXT NOT NULL,
+    size TEXT,
+    suspension TEXT,
+    has_trailer_hook BOOLEAN DEFAULT 0,
+    description TEXT,
+    min_height INTEGER,
+    max_height INTEGER,
+    purchase_date DATE,
+    purchase_price REAL,
+    is_active BOOLEAN DEFAULT 1,
+    maintenance_history TEXT DEFAULT '[]',
+    total_maintenance_cost REAL DEFAULT 0,
+    last_maintenance_date DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
@@ -431,6 +498,13 @@ db.serialize(() => {
       UPDATE fixed_costs SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
     END`);
 
+  db.run(`CREATE TRIGGER IF NOT EXISTS update_individual_bikes_timestamp 
+    AFTER UPDATE ON individual_bikes 
+    FOR EACH ROW 
+    BEGIN 
+      UPDATE individual_bikes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; 
+    END`);
+
   // Fix inconsistent column names in booking_bikes table
   db.all("PRAGMA table_info(booking_bikes)", (err, columns) => {
     if (!err && columns) {
@@ -474,15 +548,33 @@ db.serialize(() => {
 
 // Health check
 app.get('/api/health', (req, res) => {
+  logger.info('HEALTH_CHECK', 'Health check requested', {
+    timestamp: new Date().toISOString(),
+    userAgent: req.headers['user-agent'],
+    ip: req.ip || req.connection.remoteAddress
+  });
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 // Settings endpoints
 app.get('/api/settings', (req, res) => {
-  addLog('debug', 'Settings endpoint called');
+  logger.info('SETTINGS', 'Settings retrieval requested', {
+    userAgent: req.headers['user-agent'],
+    ip: req.ip || req.connection.remoteAddress
+  });
   
   db.get("SELECT * FROM settings WHERE id = 1", (err, settings) => {
-    addLog('debug', 'Settings query result', { err: err?.message, hasSettings: !!settings });
+    if (err) {
+      logger.error('SETTINGS', 'Failed to fetch settings from database', {
+        error: err.message,
+        userAgent: req.headers['user-agent'],
+        ip: req.ip || req.connection.remoteAddress
+      });
+    } else {
+      logger.debug('SETTINGS', 'Settings query completed successfully', { 
+        hasSettings: !!settings 
+      });
+    }
     
     if (err) {
       return handleDatabaseError(res, err, 'fetching settings');
@@ -849,19 +941,54 @@ app.post('/api/bookings', (req, res) => {
   // Generate unique ID for the booking
   const id = Date.now().toString();
   
+  // Log booking creation attempt
+  logger.info('BOOKING_CREATE', 'New booking creation request received', {
+    bookingId: id,
+    customerName,
+    phone,
+    email,
+    startTime,
+    endTime,
+    date,
+    category,
+    needsGuide,
+    totalPrice,
+    bikeDetailsCount: bikeDetails ? bikeDetails.length : 0,
+    userAgent: req.headers['user-agent'],
+    ip: req.ip || req.connection.remoteAddress
+  });
+  
   // Validate required fields
   const missing = validateRequired(['customerName', 'phone', 'startTime', 'endTime', 'date', 'category'], req.body);
   if (missing.length > 0) {
+    logger.warn('BOOKING_CREATE', 'Booking creation failed - missing fields', {
+      bookingId: id,
+      customerName,
+      missingFields: missing,
+      providedFields: Object.keys(req.body)
+    });
     return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
   }
 
   // Validate email format
   if (email && !validateEmail(email)) {
+    logger.warn('BOOKING_CREATE', 'Booking creation failed - invalid email format', {
+      bookingId: id,
+      customerName,
+      email,
+      phone
+    });
     return res.status(400).json({ error: 'Invalid email format' });
   }
 
   // Validate phone format
   if (!validatePhone(phone)) {
+    logger.warn('BOOKING_CREATE', 'Booking creation failed - invalid phone format', {
+      bookingId: id,
+      customerName,
+      phone,
+      email
+    });
     return res.status(400).json({ error: 'Invalid phone number format' });
   }
 
@@ -960,6 +1087,32 @@ app.post('/api/bookings', (req, res) => {
           return res.status(500).json({ error: 'Failed to create booking with bike details' });
         } else {
           db.run("COMMIT");
+          // Log successful booking creation with detailed information
+          logger.info('BOOKING_CREATE', 'New booking created successfully with transaction', {
+            bookingId: id,
+            customerName,
+            phone,
+            email,
+            startTime,
+            endTime,
+            date,
+            category,
+            needsGuide,
+            status: status || 'confirmed',
+            totalPrice,
+            bikeDetails,
+            bikeCount: bikeDetails ? bikeDetails.reduce((total, bike) => total + bike.count, 0) : 0,
+            transactionCompleted: true
+          });
+          
+          // Use the new logger's specific booking method
+          logger.logBooking('created', {
+            id,
+            customerName,
+            totalPrice,
+            date
+          });
+          
           addLog('info', 'New booking created successfully with transaction', { bookingId: id, customer: customerName });
           res.json({ success: true, id });
         }
@@ -1437,8 +1590,334 @@ app.post('/api/data/import', (req, res) => {
   }
 });
 
+// ============================
+// LOG MANAGEMENT ENDPOINTS
+// ============================
+
+// Get log directory information
+app.get('/api/logs/info', async (req, res) => {
+  const startTime = Date.now();
+  
+  try {
+    logger.info('LOG_MANAGEMENT', 'Getting log directory information');
+    
+    const [logFiles, directorySize] = await Promise.all([
+      logger.getLogFiles(),
+      logger.getLogDirectorySize()
+    ]);
+    
+    const result = {
+      ...directorySize,
+      files: logFiles.map(file => ({
+        name: file.name,
+        size: file.size,
+        sizeFormatted: logger.formatFileSize(file.size),
+        created: file.created,
+        modified: file.modified
+      }))
+    };
+    
+    logger.logPerformance('LOG_INFO_REQUEST', Date.now() - startTime);
+    res.json(result);
+    
+  } catch (error) {
+    logger.error('LOG_MANAGEMENT', 'Failed to get log info', { error: error.message });
+    res.status(500).json({ error: 'Failed to get log information', details: error.message });
+  }
+});
+
+// Clean old logs
+app.post('/api/logs/clean', async (req, res) => {
+  const startTime = Date.now();
+  const { daysToKeep = 30 } = req.body;
+  
+  try {
+    logger.info('LOG_MANAGEMENT', 'Starting log cleanup', { daysToKeep });
+    
+    const result = await logger.cleanOldLogs(parseInt(daysToKeep));
+    
+    logger.logPerformance('LOG_CLEANUP', Date.now() - startTime, result);
+    res.json({
+      success: true,
+      message: `Cleanup completed. Deleted ${result.deletedCount} files (${result.deletedSizeFormatted})`,
+      ...result
+    });
+    
+  } catch (error) {
+    logger.error('LOG_MANAGEMENT', 'Failed to clean logs', { error: error.message, daysToKeep });
+    res.status(500).json({ error: 'Failed to clean logs', details: error.message });
+  }
+});
+
+// Clear all logs
+app.delete('/api/logs/clear', async (req, res) => {
+  const startTime = Date.now();
+  
+  try {
+    logger.warn('LOG_MANAGEMENT', 'Clearing all logs - this action cannot be undone');
+    
+    const result = await logger.clearAllLogs();
+    
+    logger.logPerformance('LOG_CLEAR_ALL', Date.now() - startTime, result);
+    res.json({
+      success: true,
+      message: `All logs cleared. Deleted ${result.deletedCount} files (${result.deletedSizeFormatted})`,
+      ...result
+    });
+    
+  } catch (error) {
+    logger.error('LOG_MANAGEMENT', 'Failed to clear all logs', { error: error.message });
+    res.status(500).json({ error: 'Failed to clear all logs', details: error.message });
+  }
+});
+
+// Download log file
+app.get('/api/logs/download/:filename', (req, res) => {
+  const { filename } = req.params;
+  
+  try {
+    // Validate filename to prevent directory traversal
+    if (!/^rabbi-ebike-\d{4}-\d{2}-\d{2}\.log$/.test(filename)) {
+      logger.warn('LOG_MANAGEMENT', 'Invalid log filename requested', { filename });
+      return res.status(400).json({ error: 'Invalid log filename' });
+    }
+    
+    const logPath = path.join(__dirname, 'logs', filename);
+    
+    // Check if file exists
+    if (!require('fs').existsSync(logPath)) {
+      logger.warn('LOG_MANAGEMENT', 'Log file not found', { filename });
+      return res.status(404).json({ error: 'Log file not found' });
+    }
+    
+    logger.info('LOG_MANAGEMENT', 'Downloading log file', { filename });
+    
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.sendFile(logPath);
+    
+  } catch (error) {
+    logger.error('LOG_MANAGEMENT', 'Failed to download log file', { error: error.message, filename });
+    res.status(500).json({ error: 'Failed to download log file', details: error.message });
+  }
+});
+
+// Individual Bikes CRUD endpoints
+// GET all bikes
+app.get('/api/individual-bikes', (req, res) => {
+  logger.info('BIKES', 'Fetching all individual bikes');
+  
+  db.all("SELECT * FROM individual_bikes ORDER BY created_at DESC", (err, bikes) => {
+    if (err) {
+      logger.error('BIKES', 'Failed to fetch individual bikes', { error: err.message });
+      return handleDatabaseError(res, err, 'fetching individual bikes');
+    }
+    
+    // Transform database format to frontend format
+    const transformedBikes = bikes.map(bike => ({
+      id: bike.id,
+      name: bike.name,
+      brand: bike.brand,
+      model: bike.model,
+      type: bike.type,
+      size: bike.size,
+      suspension: bike.suspension,
+      hasTrailerHook: !!bike.has_trailer_hook,
+      description: bike.description || '',
+      minHeight: bike.min_height,
+      maxHeight: bike.max_height,
+      purchaseDate: bike.purchase_date ? new Date(bike.purchase_date) : undefined,
+      purchasePrice: bike.purchase_price,
+      isActive: !!bike.is_active,
+      maintenance: JSON.parse(bike.maintenance_history || '[]'),
+      totalMaintenanceCost: bike.total_maintenance_cost || 0,
+      lastMaintenanceDate: bike.last_maintenance_date ? new Date(bike.last_maintenance_date) : undefined
+    }));
+    
+    logger.info('BIKES', `Retrieved ${bikes.length} individual bikes`);
+    res.json(transformedBikes);
+  });
+});
+
+// POST new bike
+app.post('/api/individual-bikes', (req, res) => {
+  const bike = req.body;
+  const bikeId = bike.id || Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  logger.info('BIKES', 'Creating new individual bike', { bikeName: bike.name, bikeType: bike.type, bikeId });
+  
+  const stmt = db.prepare(`
+    INSERT INTO individual_bikes (
+      id, name, brand, model, type, size, suspension, has_trailer_hook, 
+      description, min_height, max_height, purchase_date, purchase_price, 
+      is_active, maintenance_history, total_maintenance_cost
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  
+  stmt.run([
+    bikeId,
+    bike.name,
+    bike.brand,
+    bike.model || null,
+    bike.type,
+    bike.size || null,
+    bike.suspension || null,
+    bike.hasTrailerHook ? 1 : 0,
+    bike.description || null,
+    bike.minHeight || null,
+    bike.maxHeight || null,
+    bike.purchaseDate || null,
+    bike.purchasePrice || null,
+    bike.isActive !== false ? 1 : 0,
+    JSON.stringify(bike.maintenance || []),
+    bike.totalMaintenanceCost || 0
+  ], function(err) {
+    if (err) {
+      logger.error('BIKES', 'Failed to create individual bike', { error: err.message, bikeName: bike.name });
+      return handleDatabaseError(res, err, 'creating individual bike');
+    }
+    
+    // Retrieve the created bike to return the complete object
+    const selectStmt = db.prepare('SELECT * FROM individual_bikes WHERE id = ?');
+    selectStmt.get([bikeId], (err, row) => {
+      if (err) {
+        logger.error('BIKES', 'Failed to retrieve created bike', { error: err.message, bikeId });
+        return handleDatabaseError(res, err, 'retrieving created bike');
+      }
+      
+      if (row) {
+        const createdBike = {
+          id: row.id,
+          name: row.name,
+          brand: row.brand,
+          model: row.model,
+          type: row.type,
+          size: row.size,
+          suspension: row.suspension,
+          hasTrailerHook: !!row.has_trailer_hook,
+          description: row.description || '',
+          minHeight: row.min_height,
+          maxHeight: row.max_height,
+          purchaseDate: row.purchase_date ? new Date(row.purchase_date) : undefined,
+          purchasePrice: row.purchase_price,
+          isActive: !!row.is_active,
+          maintenance: JSON.parse(row.maintenance_history || '[]'),
+          totalMaintenanceCost: row.total_maintenance_cost || 0,
+          lastMaintenanceDate: row.last_maintenance_date ? new Date(row.last_maintenance_date) : undefined
+        };
+        
+        logger.logBike('created', { id: bikeId, type: bike.type, name: bike.name });
+        res.status(201).json(createdBike);
+      } else {
+        logger.error('BIKES', 'Created bike not found', { bikeId });
+        res.status(500).json({ error: 'Created bike not found' });
+      }
+    });
+    selectStmt.finalize();
+  });
+  
+  stmt.finalize();
+});
+
+// PUT update bike
+app.put('/api/individual-bikes/:id', (req, res) => {
+  const { id } = req.params;
+  const bike = req.body;
+  
+  logger.info('BIKES', 'Updating individual bike', { bikeId: id, bikeName: bike.name });
+  
+  const stmt = db.prepare(`
+    UPDATE individual_bikes SET
+      name = ?, brand = ?, model = ?, type = ?, size = ?, suspension = ?, 
+      has_trailer_hook = ?, description = ?, min_height = ?, max_height = ?, 
+      purchase_date = ?, purchase_price = ?, is_active = ?, maintenance_history = ?, 
+      total_maintenance_cost = ?, last_maintenance_date = ?
+    WHERE id = ?
+  `);
+  
+  stmt.run([
+    bike.name,
+    bike.brand,
+    bike.model || null,
+    bike.type,
+    bike.size || null,
+    bike.suspension || null,
+    bike.hasTrailerHook ? 1 : 0,
+    bike.description || null,
+    bike.minHeight || null,
+    bike.maxHeight || null,
+    bike.purchaseDate || null,
+    bike.purchasePrice || null,
+    bike.isActive ? 1 : 0,
+    JSON.stringify(bike.maintenance || []),
+    bike.totalMaintenanceCost || 0,
+    bike.lastMaintenanceDate || null,
+    id
+  ], function(err) {
+    if (err) {
+      logger.error('BIKES', 'Failed to update individual bike', { error: err.message, bikeId: id });
+      return handleDatabaseError(res, err, 'updating individual bike');
+    }
+    
+    if (this.changes === 0) {
+      logger.warn('BIKES', 'No bike found to update', { bikeId: id });
+      return res.status(404).json({ error: 'Bike not found' });
+    }
+    
+    logger.logBike('updated', { id, type: bike.type, name: bike.name });
+    res.json({ message: 'Bike updated successfully', changes: this.changes });
+  });
+  
+  stmt.finalize();
+});
+
+// DELETE bike
+app.delete('/api/individual-bikes/:id', (req, res) => {
+  const { id } = req.params;
+  
+  logger.info('BIKES', 'Deleting individual bike', { bikeId: id });
+  
+  // First get bike info for logging
+  db.get("SELECT * FROM individual_bikes WHERE id = ?", [id], (err, bike) => {
+    if (err) {
+      logger.error('BIKES', 'Failed to fetch bike for deletion', { error: err.message, bikeId: id });
+      return handleDatabaseError(res, err, 'fetching bike for deletion');
+    }
+    
+    if (!bike) {
+      logger.warn('BIKES', 'No bike found to delete', { bikeId: id });
+      return res.status(404).json({ error: 'Bike not found' });
+    }
+    
+    // Delete the bike
+    db.run("DELETE FROM individual_bikes WHERE id = ?", [id], function(err) {
+      if (err) {
+        logger.error('BIKES', 'Failed to delete individual bike', { error: err.message, bikeId: id });
+        return handleDatabaseError(res, err, 'deleting individual bike');
+      }
+      
+      logger.logBike('deleted', { id, type: bike.type, name: bike.name });
+      res.json({ message: 'Bike deleted successfully', changes: this.changes });
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Rabbi E-Bike Server running on port ${PORT}`);
   console.log(`📂 Database: ${dbPath}`);
   console.log(`🌐 API: http://localhost:${PORT}/api`);
+  
+  // Log server startup with advanced logging
+  logger.info('SERVER', 'Rabbi E-Bike Server started successfully', {
+    port: PORT,
+    database: dbPath,
+    apiUrl: `http://localhost:${PORT}/api`,
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    startupTime: new Date().toISOString(),
+    processId: process.pid,
+    workingDirectory: process.cwd(),
+    memoryUsage: process.memoryUsage(),
+    uptime: process.uptime()
+  });
 });

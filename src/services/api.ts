@@ -187,6 +187,63 @@ class ApiService {
     return this.fetch(`/analytics/revenue-breakdown?period=${period}`);
   }
 
+  // Log management
+  async getLogInfo() {
+    return this.fetch('/logs/info');
+  }
+
+  async cleanOldLogs(daysToKeep = 30) {
+    return this.fetch('/logs/clean', {
+      method: 'POST',
+      body: JSON.stringify({ daysToKeep }),
+    });
+  }
+
+  async clearAllLogs() {
+    return this.fetch('/logs/clear', {
+      method: 'DELETE',
+    });
+  }
+
+  async downloadLogFile(filename: string) {
+    const response = await fetch(`${this.baseUrl}/logs/download/${filename}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.blob();
+  }
+
+  // Individual Bikes management
+  async getIndividualBikes() {
+    return this.fetch('/individual-bikes');
+  }
+
+  async createIndividualBike(bike: any) {
+    return this.fetch('/individual-bikes', {
+      method: 'POST',
+      body: JSON.stringify(bike),
+    });
+  }
+
+  async updateIndividualBike(id: string, bike: any) {
+    return this.fetch(`/individual-bikes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(bike),
+    });
+  }
+
+  async deleteIndividualBike(id: string) {
+    return this.fetch(`/individual-bikes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Data management
   async exportAllData() {
     return this.fetch('/data/export');

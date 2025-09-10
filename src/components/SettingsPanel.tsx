@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusIcon, MinusIcon, SaveIcon, XIcon, MoonIcon, SunIcon } from "lucide-react";
+import { PlusIcon, MinusIcon, SaveIcon, XIcon, MoonIcon, SunIcon, FileTextIcon, TrashIcon, DownloadIcon, AlertTriangleIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ShopSettings } from "./Dashboard";
 import type { BikeDetails, BikeType, BikeSize, BikeSuspension } from "@/types/bike";
 import { DevPanel } from "./DevPanel";
+import { apiService } from "@/services/api";
 
 interface SettingsPanelProps {
   settings: ShopSettings;
@@ -23,11 +24,91 @@ interface SettingsPanelProps {
 export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps) => {
   const [formData, setFormData] = useState<ShopSettings>(settings);
   const { theme, setTheme } = useTheme();
+  
+  // Log management state
+  const [logInfo, setLogInfo] = useState<any>(null);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [cleaningLogs, setCleaningLogs] = useState(false);
+  const [clearingLogs, setClearingLogs] = useState(false);
 
   const handleSave = () => {
     onSave(formData);
     onClose();
   };
+
+  // Load log information
+  const loadLogInfo = async () => {
+    setLoadingLogs(true);
+    try {
+      const info = await apiService.getLogInfo();
+      setLogInfo(info);
+    } catch (error) {
+      console.error('Failed to load log info:', error);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  // Clean old logs
+  const handleCleanLogs = async (daysToKeep = 30) => {
+    if (!confirm(`Sei sicuro di voler eliminare tutti i log più vecchi di ${daysToKeep} giorni?`)) {
+      return;
+    }
+
+    setCleaningLogs(true);
+    try {
+      const result = await apiService.cleanOldLogs(daysToKeep);
+      alert(`Pulizia completata: ${result.deletedCount} file eliminati (${result.deletedSizeFormatted} liberati)`);
+      await loadLogInfo(); // Refresh log info
+    } catch (error) {
+      console.error('Failed to clean logs:', error);
+      alert('Errore durante la pulizia dei log');
+    } finally {
+      setCleaningLogs(false);
+    }
+  };
+
+  // Clear all logs
+  const handleClearAllLogs = async () => {
+    if (!confirm('ATTENZIONE: Questa azione eliminerà TUTTI i file di log. Sei sicuro di voler continuare?')) {
+      return;
+    }
+
+    setClearingLogs(true);
+    try {
+      const result = await apiService.clearAllLogs();
+      alert(`Tutti i log sono stati eliminati: ${result.deletedCount} file (${result.deletedSizeFormatted} liberati)`);
+      await loadLogInfo(); // Refresh log info
+    } catch (error) {
+      console.error('Failed to clear all logs:', error);
+      alert('Errore durante l\'eliminazione di tutti i log');
+    } finally {
+      setClearingLogs(false);
+    }
+  };
+
+  // Download log file
+  const handleDownloadLog = async (filename: string) => {
+    try {
+      const blob = await apiService.downloadLogFile(filename);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to download log file:', error);
+      alert('Errore durante il download del file di log');
+    }
+  };
+
+  // Load log info when component mounts
+  useEffect(() => {
+    loadLogInfo();
+  }, []);
 
   const generateTimeOptions = () => {
     const options = [];
@@ -63,9 +144,10 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           <Tabs defaultValue="general" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="general">Generale</TabsTrigger>
               <TabsTrigger value="pricing">Prezzi</TabsTrigger>
+              <TabsTrigger value="logs">Logs</TabsTrigger>
               <TabsTrigger value="appearance">Aspetto</TabsTrigger>
               <TabsTrigger value="developer">Dev</TabsTrigger>
             </TabsList>
@@ -300,6 +382,135 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
                       </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="logs" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileTextIcon className="w-5 h-5" />
+                    Gestione Log
+                  </CardTitle>
+                  <CardDescription>Monitor e gestione dei file di log del sistema</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {loadingLogs ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-electric-green"></div>
+                    </div>
+                  ) : logInfo ? (
+                    <div className="space-y-4">
+                      {/* Log Directory Info */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-electric-green">{logInfo.fileCount}</p>
+                          <p className="text-sm text-muted-foreground">File di Log</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-blue-500">{logInfo.totalSizeFormatted}</p>
+                          <p className="text-sm text-muted-foreground">Spazio Totale</p>
+                        </div>
+                        <div className="text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={loadLogInfo}
+                            disabled={loadingLogs}
+                          >
+                            Aggiorna
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Log Files List */}
+                      {logInfo.files && logInfo.files.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>File di Log Disponibili</Label>
+                          <div className="max-h-48 overflow-y-auto border rounded-lg">
+                            {logInfo.files.map((file: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-muted/50">
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">{file.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {file.sizeFormatted} • {new Date(file.modified).toLocaleString('it-IT')}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownloadLog(file.name)}
+                                  className="ml-2"
+                                >
+                                  <DownloadIcon className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <Separator />
+
+                      {/* Log Management Actions */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Azioni di Pulizia</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={() => handleCleanLogs(7)}
+                              disabled={cleaningLogs}
+                              className="flex items-center gap-2"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                              {cleaningLogs ? 'Pulendo...' : 'Pulisci Log > 7 giorni'}
+                            </Button>
+                            
+                            <Button
+                              variant="outline"
+                              onClick={() => handleCleanLogs(30)}
+                              disabled={cleaningLogs}
+                              className="flex items-center gap-2"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                              {cleaningLogs ? 'Pulendo...' : 'Pulisci Log > 30 giorni'}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-900">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangleIcon className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                            <div className="space-y-2 flex-1">
+                              <p className="font-medium text-red-800 dark:text-red-200">Zona Pericolosa</p>
+                              <p className="text-sm text-red-700 dark:text-red-300">
+                                L'azione seguente eliminerà TUTTI i file di log in modo permanente.
+                              </p>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleClearAllLogs}
+                                disabled={clearingLogs}
+                                className="flex items-center gap-2"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                {clearingLogs ? 'Eliminando...' : 'Elimina Tutti i Log'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">Impossibile caricare le informazioni sui log</p>
+                      <Button variant="outline" onClick={loadLogInfo} className="mt-2">
+                        Riprova
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

@@ -843,6 +843,7 @@ export const Dashboard = () => {
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(defaultSettings);
+  const [individualBikes, setIndividualBikes] = useState<Bike[]>([]);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -915,6 +916,20 @@ export const Dashboard = () => {
 
     loadData();
   }, [isOnline, toast]);
+
+  // Load individual bikes when garage is opened
+  useEffect(() => {
+    if (showGarage) {
+      loadIndividualBikes();
+    }
+  }, [showGarage]);
+
+  // Load individual bikes at startup for bookings
+  useEffect(() => {
+    if (isOnline) {
+      loadIndividualBikes();
+    }
+  }, [isOnline]);
 
   const addBooking = async (booking: Omit<Booking, "id" | "totalPrice">) => {
     const totalPrice = calculatePrice(booking.bikeDetails, booking.category, booking.needsGuide, booking.startTime, booking.endTime);
@@ -1021,6 +1036,93 @@ export const Dashboard = () => {
     setBookings(bookings.filter(b => b.id !== bookingId));
   };
 
+  // Individual bikes management functions
+  const loadIndividualBikes = async () => {
+    if (!isOnline) return;
+    
+    try {
+      const bikes = await apiService.getIndividualBikes();
+      setIndividualBikes(bikes);
+    } catch (error) {
+      console.error('Failed to load individual bikes:', error);
+    }
+  };
+
+  const addIndividualBike = async (bike: Omit<Bike, 'id'>) => {
+    if (isOnline) {
+      try {
+        const newBike = await apiService.createIndividualBike(bike);
+        setIndividualBikes([...individualBikes, newBike]);
+        toast({
+          title: "Bicicletta aggiunta",
+          description: "La bicicletta è stata aggiunta al database.",
+        });
+        return newBike;
+      } catch (error) {
+        toast({
+          title: "Errore",
+          description: "Impossibile salvare la bicicletta nel database.",
+          variant: "destructive"
+        });
+        throw error;
+      }
+    } else {
+      // Offline mode - add locally with temporary ID
+      const newBike = { ...bike, id: `temp-${Date.now()}` };
+      setIndividualBikes([...individualBikes, newBike]);
+      return newBike;
+    }
+  };
+
+  const updateIndividualBike = async (id: string, updates: Partial<Bike>) => {
+    if (isOnline) {
+      try {
+        const updatedBike = await apiService.updateIndividualBike(id, updates);
+        setIndividualBikes(individualBikes.map(bike => bike.id === id ? updatedBike : bike));
+        toast({
+          title: "Bicicletta aggiornata",
+          description: "Le modifiche sono state salvate nel database.",
+        });
+        return updatedBike;
+      } catch (error) {
+        toast({
+          title: "Errore",
+          description: "Impossibile aggiornare la bicicletta nel database.",
+          variant: "destructive"
+        });
+        throw error;
+      }
+    } else {
+      // Offline mode - update locally
+      const updatedBike = { ...individualBikes.find(b => b.id === id)!, ...updates };
+      setIndividualBikes(individualBikes.map(bike => bike.id === id ? updatedBike : bike));
+      return updatedBike;
+    }
+  };
+
+  const deleteIndividualBike = async (id: string) => {
+    if (isOnline) {
+      try {
+        await apiService.deleteIndividualBike(id);
+        setIndividualBikes(individualBikes.filter(bike => bike.id !== id));
+        toast({
+          title: "Bicicletta eliminata",
+          description: "La bicicletta è stata rimossa dal database.",
+        });
+      } catch (error) {
+        toast({
+          title: "Errore",
+          description: "Impossibile eliminare la bicicletta dal database.",
+          variant: "destructive"
+        });
+        throw error;
+      }
+    } else {
+      // Offline mode - delete locally
+      setIndividualBikes(individualBikes.filter(bike => bike.id !== id));
+    }
+  };
+
   const getAvailableBikes = (date: Date, startTime: string, endTime: string, category: BookingCategory): BikeDetails[] => {
     const dayBookings = bookings.filter(
       booking => 
@@ -1036,15 +1138,32 @@ export const Dashboard = () => {
     const bookedByType: Record<string, number> = {};
     dayBookings.forEach(booking => {
       booking.bikeDetails.forEach(bike => {
-        const key = `${bike.type}-${bike.size}-${bike.suspension}`;
+        const key = `${bike.type}-${bike.size || 'none'}-${bike.suspension || 'none'}-${bike.hasTrailerHook || false}`;
         bookedByType[key] = (bookedByType[key] || 0) + bike.count;
       });
     });
     
     // Group garage bikes by type/size/suspension/hasTrailerHook and count available
     const bikeGroups: Record<string, BikeDetails> = {};
+    
+    // Add settings bikes
     settings.bikes.filter(bike => bike.isActive !== false).forEach(bike => {
-      const key = `${bike.type}-${bike.size}-${bike.suspension}-${bike.hasTrailerHook}`;
+      const key = `${bike.type}-${bike.size || 'none'}-${bike.suspension || 'none'}-${bike.hasTrailerHook || false}`;
+      if (!bikeGroups[key]) {
+        bikeGroups[key] = {
+          type: bike.type,
+          size: bike.size,
+          suspension: bike.suspension,
+          hasTrailerHook: bike.hasTrailerHook,
+          count: 0
+        };
+      }
+      bikeGroups[key].count++;
+    });
+
+    // Add individual bikes (mainly for trailers and specific bikes)
+    individualBikes.filter(bike => bike.isActive).forEach(bike => {
+      const key = `${bike.type}-${bike.size || 'none'}-${bike.suspension || 'none'}-${bike.hasTrailerHook || false}`;
       if (!bikeGroups[key]) {
         bikeGroups[key] = {
           type: bike.type,
@@ -1059,7 +1178,7 @@ export const Dashboard = () => {
     
     // Calculate available bikes
     return Object.values(bikeGroups).map(bike => {
-      const key = `${bike.type}-${bike.size}-${bike.suspension}-${bike.hasTrailerHook}`;
+      const key = `${bike.type}-${bike.size || 'none'}-${bike.suspension || 'none'}-${bike.hasTrailerHook || false}`;
       const booked = bookedByType[key] || 0;
       return {
         ...bike,
@@ -1323,12 +1442,9 @@ export const Dashboard = () => {
       )}
 
       {showGarage && (
-        <MinimalGarage
-          bikes={settings.bikes || []}
-          onUpdateBikes={(updatedBikes) => {
-            const newSettings = { ...settings, bikes: updatedBikes };
-            setSettings(newSettings);
-          }}
+        <Garage
+          bikes={individualBikes}
+          onUpdateBikes={setIndividualBikes}
           onClose={() => resetAllViews()}
         />
       )}

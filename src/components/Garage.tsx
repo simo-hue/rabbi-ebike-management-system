@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Bike, BikeType, BikeSize, BikeSuspension, MaintenanceRecord } from "@/types/bike";
+import { apiService } from "@/services/api";
 
 interface GarageProps {
   bikes: Bike[];
@@ -79,7 +80,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     notes: ""
   });
 
-  const handleAddBike = () => {
+  const handleAddBike = async () => {
     if (!newBike.name || !newBike.brand) {
       toast({
         title: "Errore",
@@ -92,54 +93,64 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     const quantity = newBike.quantity || 1;
     const newBikes: Bike[] = [];
 
-    for (let i = 0; i < quantity; i++) {
-      const bike: Bike = {
-        id: `${Date.now()}-${i}`,
-        name: quantity > 1 ? `${newBike.name!} #${i + 1}` : newBike.name!,
-        brand: newBike.brand!,
-        model: newBike.model || "",
-        type: newBike.type!,
-        size: newBike.type === "trailer" ? undefined : newBike.size!,
-        suspension: newBike.type === "trailer" ? undefined : newBike.suspension!,
-        hasTrailerHook: newBike.type === "trailer" ? undefined : newBike.hasTrailerHook,
-        description: newBike.description!,
-        minHeight: newBike.type === "trailer" ? undefined : newBike.minHeight!,
-        maxHeight: newBike.type === "trailer" ? undefined : newBike.maxHeight!,
-        purchaseDate: newBike.purchaseDate,
-        purchasePrice: newBike.purchasePrice,
-        isActive: newBike.isActive!,
+    try {
+      for (let i = 0; i < quantity; i++) {
+        const bikeData = {
+          name: quantity > 1 ? `${newBike.name!} #${i + 1}` : newBike.name!,
+          brand: newBike.brand!,
+          model: newBike.model || "",
+          type: newBike.type!,
+          size: newBike.type === "trailer" ? undefined : newBike.size!,
+          suspension: newBike.type === "trailer" ? undefined : newBike.suspension!,
+          hasTrailerHook: newBike.type === "trailer" ? undefined : newBike.hasTrailerHook,
+          description: newBike.description!,
+          minHeight: newBike.type === "trailer" ? undefined : newBike.minHeight!,
+          maxHeight: newBike.type === "trailer" ? undefined : newBike.maxHeight!,
+          purchaseDate: newBike.purchaseDate,
+          purchasePrice: newBike.purchasePrice,
+          isActive: newBike.isActive!,
+          maintenance: [],
+          totalMaintenanceCost: 0
+        };
+        
+        const savedBike = await apiService.createIndividualBike(bikeData);
+        newBikes.push(savedBike);
+      }
+
+      onUpdateBikes([...bikes, ...newBikes]);
+      setNewBike({
+        name: "",
+        brand: "",
+        model: "",
+        type: "adulto",
+        size: "M",
+        suspension: "front-only",
+        hasTrailerHook: false,
+        description: "",
+        minHeight: 150,
+        maxHeight: 190,
+        isActive: true,
         maintenance: [],
-        totalMaintenanceCost: 0
-      };
-      newBikes.push(bike);
+        totalMaintenanceCost: 0,
+        quantity: 1
+      });
+      setIsAddingBike(false);
+
+      toast({
+        title: "Successo",
+        description: `${quantity > 1 ? `${quantity} biciclette aggiunte` : "Bicicletta aggiunta"} al database`
+      });
+    } catch (error) {
+      console.error('Failed to add bike:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare la bicicletta nel database",
+        variant: "destructive"
+      });
     }
-
-    onUpdateBikes([...bikes, ...newBikes]);
-    setNewBike({
-      name: "",
-      brand: "",
-      model: "",
-      type: "adulto",
-      size: "M",
-      suspension: "front-only",
-      hasTrailerHook: false,
-      description: "",
-      minHeight: 150,
-      maxHeight: 190,
-      isActive: true,
-      maintenance: [],
-      totalMaintenanceCost: 0,
-      quantity: 1
-    });
-    setIsAddingBike(false);
-
-    toast({
-      title: "Successo",
-      description: `${quantity > 1 ? `${quantity} biciclette aggiunte` : "Bicicletta aggiunta"} con successo`
-    });
   };
 
-  const handleAddTrailer = () => {
+  const handleAddTrailer = async () => {
     if (!newTrailer.name || !newTrailer.brand) {
       toast({
         title: "Errore",
@@ -152,64 +163,122 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     const quantity = newTrailer.quantity || 1;
     const newTrailers: Bike[] = [];
 
-    for (let i = 0; i < quantity; i++) {
-      const trailer: Bike = {
-        id: `${Date.now()}-${i}`,
-        name: quantity > 1 ? `${newTrailer.name!} #${i + 1}` : newTrailer.name!,
-        brand: newTrailer.brand!,
-        model: newTrailer.model || "",
+    try {
+      for (let i = 0; i < quantity; i++) {
+        const trailerData = {
+          name: quantity > 1 ? `${newTrailer.name!} #${i + 1}` : newTrailer.name!,
+          brand: newTrailer.brand!,
+          model: newTrailer.model || "",
+          type: "trailer" as BikeType,
+          description: newTrailer.description!,
+          purchaseDate: newTrailer.purchaseDate,
+          purchasePrice: newTrailer.purchasePrice,
+          isActive: newTrailer.isActive!,
+          maintenance: [],
+          totalMaintenanceCost: 0
+        };
+        
+        const savedTrailer = await apiService.createIndividualBike(trailerData);
+        newTrailers.push(savedTrailer);
+      }
+
+      onUpdateBikes([...bikes, ...newTrailers]);
+      setNewTrailer({
+        name: "",
+        brand: "",
+        model: "",
         type: "trailer",
-        description: newTrailer.description!,
-        purchaseDate: newTrailer.purchaseDate,
-        purchasePrice: newTrailer.purchasePrice,
-        isActive: newTrailer.isActive!,
+        description: "",
+        isActive: true,
         maintenance: [],
-        totalMaintenanceCost: 0
-      };
-      newTrailers.push(trailer);
+        totalMaintenanceCost: 0,
+        quantity: 1
+      });
+      setIsAddingTrailer(false);
+
+      toast({
+        title: "Successo",
+        description: `${quantity > 1 ? `${quantity} carrelli aggiunti` : "Carrello aggiunto"} al database`
+      });
+    } catch (error) {
+      console.error('Failed to add trailer:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare il carrello nel database",
+        variant: "destructive"
+      });
     }
-
-    onUpdateBikes([...bikes, ...newTrailers]);
-    setNewTrailer({
-      name: "",
-      brand: "",
-      model: "",
-      type: "trailer",
-      description: "",
-      isActive: true,
-      maintenance: [],
-      totalMaintenanceCost: 0,
-      quantity: 1
-    });
-    setIsAddingTrailer(false);
-
-    toast({
-      title: "Successo",
-      description: `${quantity > 1 ? `${quantity} carrelli aggiunti` : "Carrello aggiunto"} con successo`
-    });
   };
 
-  const handleUpdateBike = (updatedBike: Bike) => {
-    const updatedBikes = bikes.map(bike => 
-      bike.id === updatedBike.id ? updatedBike : bike
-    );
-    onUpdateBikes(updatedBikes);
-    setSelectedBike(updatedBike);
+  const handleUpdateBike = async (updatedBike: Bike) => {
+    console.log('🔄 [UPDATE_BIKE] Starting handleUpdateBike for bike:', updatedBike.id);
+    try {
+      console.log('📡 [UPDATE_BIKE] Calling API updateIndividualBike...');
+      const savedBike = await apiService.updateIndividualBike(updatedBike.id, updatedBike);
+      console.log('✅ [UPDATE_BIKE] API call successful, saved bike ID:', savedBike.id);
+      
+      console.log('🔄 [UPDATE_BIKE] Updating bikes array...');
+      const updatedBikes = bikes.map(bike => 
+        bike.id === updatedBike.id ? savedBike : bike
+      );
+      console.log('✅ [UPDATE_BIKE] Bikes array updated');
+      
+      console.log('🚲 [UPDATE_BIKE] Calling onUpdateBikes...');
+      onUpdateBikes(updatedBikes);
+      console.log('✅ [UPDATE_BIKE] onUpdateBikes completed');
+      
+      console.log('🎯 [UPDATE_BIKE] Setting selectedBike...');
+      setSelectedBike(savedBike);
+      console.log('✅ [UPDATE_BIKE] selectedBike set successfully');
+      
+      console.log('✅ [UPDATE_BIKE] handleUpdateBike completed successfully');
+    } catch (error) {
+      console.error('❌ [UPDATE_BIKE] ERROR in handleUpdateBike:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare la bicicletta nel database",
+        variant: "destructive"
+      });
+      throw error; // Re-throw to be caught by caller
+    }
   };
 
-  const handleDeleteBike = (bikeId: string) => {
-    const updatedBikes = bikes.filter(bike => bike.id !== bikeId);
-    onUpdateBikes(updatedBikes);
-    setSelectedBike(null);
-    
-    toast({
-      title: "Successo",
-      description: "Bicicletta eliminata"
+  const handleDeleteBike = async (bikeId: string) => {
+    try {
+      await apiService.deleteIndividualBike(bikeId);
+      const updatedBikes = bikes.filter(bike => bike.id !== bikeId);
+      onUpdateBikes(updatedBikes);
+      setSelectedBike(null);
+      
+      toast({
+        title: "Successo",
+        description: "Bicicletta eliminata dal database"
+      });
+    } catch (error) {
+      console.error('Failed to delete bike:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare la bicicletta dal database",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddMaintenance = async () => {
+    console.log('🚀 [MAINTENANCE] Starting handleAddMaintenance');
+    console.log('🚀 [MAINTENANCE] Current state:', {
+      selectedBike: selectedBike ? { id: selectedBike.id, name: selectedBike.name } : null,
+      maintenance: newMaintenance,
+      isAddingMaintenance,
+      showCostDetails
     });
-  };
 
-  const handleAddMaintenance = () => {
     if (!selectedBike || !newMaintenance.type || !newMaintenance.description) {
+      console.log('❌ [MAINTENANCE] Validation failed:', {
+        hasSelectedBike: !!selectedBike,
+        hasType: !!newMaintenance.type,
+        hasDescription: !!newMaintenance.description
+      });
       toast({
         title: "Errore",
         description: "Tipo e descrizione sono obbligatori",
@@ -218,37 +287,61 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       return;
     }
 
-    const maintenance: MaintenanceRecord = {
-      id: Date.now().toString(),
-      date: new Date(),
-      type: newMaintenance.type!,
-      description: newMaintenance.description!,
-      cost: newMaintenance.cost || 0,
-      mechanic: newMaintenance.mechanic || "",
-      notes: newMaintenance.notes || ""
-    };
+    try {
+      console.log('📝 [MAINTENANCE] Creating maintenance record...');
+      const maintenance: MaintenanceRecord = {
+        id: Date.now().toString(),
+        date: new Date(),
+        type: newMaintenance.type!,
+        description: newMaintenance.description!,
+        cost: newMaintenance.cost || 0,
+        mechanic: newMaintenance.mechanic || "",
+        notes: newMaintenance.notes || ""
+      };
+      console.log('📝 [MAINTENANCE] Maintenance record created:', maintenance);
 
-    const updatedBike: Bike = {
-      ...selectedBike,
-      maintenance: [...selectedBike.maintenance, maintenance],
-      totalMaintenanceCost: selectedBike.totalMaintenanceCost + maintenance.cost,
-      lastMaintenanceDate: new Date()
-    };
+      console.log('🚲 [MAINTENANCE] Creating updated bike...');
+      const updatedBike: Bike = {
+        ...selectedBike,
+        maintenance: [...(selectedBike.maintenance || []), maintenance],
+        totalMaintenanceCost: (selectedBike.totalMaintenanceCost || 0) + maintenance.cost,
+        lastMaintenanceDate: new Date()
+      };
+      console.log('🚲 [MAINTENANCE] Updated bike created, maintenance count:', updatedBike.maintenance.length);
 
-    handleUpdateBike(updatedBike);
-    setNewMaintenance({
-      type: "",
-      description: "",
-      cost: 0,
-      mechanic: "",
-      notes: ""
-    });
-    setIsAddingMaintenance(false);
+      console.log('🔄 [MAINTENANCE] Calling handleUpdateBike...');
+      await handleUpdateBike(updatedBike);
+      console.log('✅ [MAINTENANCE] handleUpdateBike completed');
+      
+      console.log('🧹 [MAINTENANCE] Resetting form state...');
+      setNewMaintenance({
+        type: "",
+        description: "",
+        cost: 0,
+        mechanic: "",
+        notes: ""
+      });
+      console.log('✅ [MAINTENANCE] Form reset completed');
+      
+      console.log('❌ [MAINTENANCE] Closing dialog...');
+      setIsAddingMaintenance(false);
+      console.log('✅ [MAINTENANCE] Dialog closed');
 
-    toast({
-      title: "Successo",
-      description: "Manutenzione registrata"
-    });
+      console.log('🎉 [MAINTENANCE] Showing success toast...');
+      toast({
+        title: "Successo",
+        description: "Manutenzione registrata"
+      });
+      console.log('✅ [MAINTENANCE] SUCCESS - All operations completed successfully');
+      
+    } catch (error) {
+      console.error('❌ [MAINTENANCE] ERROR in handleAddMaintenance:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare la manutenzione",
+        variant: "destructive"
+      });
+    }
   };
 
   const calculateProfitability = (bike: Bike) => {
@@ -822,9 +915,17 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       </Dialog>
 
       {/* Bike Details Dialog */}
-      {selectedBike && (
-        <Dialog open={!!selectedBike} onOpenChange={() => setSelectedBike(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      {(() => {
+        const shouldShowDetailsDialog = !!selectedBike && !isAddingMaintenance && !showCostDetails;
+        console.log('🔍 [DIALOG_DETAILS] Render state:', {
+          selectedBike: selectedBike ? selectedBike.id : null,
+          isAddingMaintenance,
+          showCostDetails,
+          shouldShow: shouldShowDetailsDialog
+        });
+        return selectedBike ? (
+          <Dialog open={shouldShowDetailsDialog} onOpenChange={() => setSelectedBike(null)}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedBike.name}</DialogTitle>
               <DialogDescription>
@@ -835,7 +936,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
             <Tabs defaultValue="details" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="details">Dettagli</TabsTrigger>
-                <TabsTrigger value="maintenance">Manutenzioni ({selectedBike.maintenance.length})</TabsTrigger>
+                <TabsTrigger value="maintenance">Manutenzioni ({(selectedBike.maintenance || []).length})</TabsTrigger>
                 <TabsTrigger value="stats">Statistiche</TabsTrigger>
               </TabsList>
 
@@ -945,7 +1046,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  {selectedBike.maintenance.map((maintenance) => (
+                  {(selectedBike.maintenance || []).map((maintenance) => (
                     <Card key={maintenance.id}>
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start">
@@ -995,13 +1096,13 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     <div className="mt-2 space-y-1">
                       <h4 className="text-xs font-medium">Dettaglio Costi Manutenzione:</h4>
                       <div className="max-h-20 overflow-y-auto text-xs space-y-1">
-                        {selectedBike.maintenance.map((m) => (
+                        {(selectedBike.maintenance || []).map((m) => (
                           <div key={m.id} className="flex justify-between">
                             <span>{m.type}</span>
                             <span>€{m.cost}</span>
                           </div>
                         ))}
-                        {selectedBike.maintenance.length === 0 && (
+                        {(selectedBike.maintenance || []).length === 0 && (
                           <span className="text-muted-foreground">Nessuna manutenzione registrata</span>
                         )}
                       </div>
@@ -1042,15 +1143,30 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
             </div>
           </DialogContent>
         </Dialog>
-      )}
+        ) : null;
+      })()}
 
       {/* Add Maintenance Dialog */}
-      <Dialog open={isAddingMaintenance} onOpenChange={setIsAddingMaintenance}>
+      <Dialog open={isAddingMaintenance && !!selectedBike} onOpenChange={(open) => {
+        console.log('🔄 [DIALOG_MAINTENANCE] onOpenChange called with:', open);
+        setIsAddingMaintenance(open);
+        if (!open) {
+          console.log('🧹 [DIALOG_MAINTENANCE] Resetting form on close');
+          // Reset form when dialog closes
+          setNewMaintenance({
+            type: "",
+            description: "",
+            cost: 0,
+            mechanic: "",
+            notes: ""
+          });
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Aggiungi Manutenzione</DialogTitle>
             <DialogDescription>
-              Registra una nuova manutenzione per {selectedBike?.name}
+              Registra una nuova manutenzione per {selectedBike?.name || 'bicicletta selezionata'}
             </DialogDescription>
           </DialogHeader>
           
@@ -1059,7 +1175,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               <Label htmlFor="maintenanceType">Tipo Manutenzione *</Label>
               <Input
                 id="maintenanceType"
-                value={newMaintenance.type}
+                value={newMaintenance.type || ""}
                 onChange={(e) => setNewMaintenance({ ...newMaintenance, type: e.target.value })}
                 placeholder="Es. Tagliando, Riparazione freni, etc."
               />
@@ -1069,7 +1185,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               <Label htmlFor="maintenanceDescription">Descrizione *</Label>
               <Textarea
                 id="maintenanceDescription"
-                value={newMaintenance.description}
+                value={newMaintenance.description || ""}
                 onChange={(e) => setNewMaintenance({ ...newMaintenance, description: e.target.value })}
                 placeholder="Descrivi i lavori effettuati..."
                 rows={3}
@@ -1083,7 +1199,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                   id="maintenanceCost"
                   type="number"
                   step="0.01"
-                  value={newMaintenance.cost}
+                  value={newMaintenance.cost || 0}
                   onChange={(e) => setNewMaintenance({ ...newMaintenance, cost: parseFloat(e.target.value) || 0 })}
                 />
               </div>
@@ -1092,7 +1208,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                 <Label htmlFor="mechanic">Meccanico</Label>
                 <Input
                   id="mechanic"
-                  value={newMaintenance.mechanic}
+                  value={newMaintenance.mechanic || ""}
                   onChange={(e) => setNewMaintenance({ ...newMaintenance, mechanic: e.target.value })}
                   placeholder="Nome del meccanico"
                 />
@@ -1103,7 +1219,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
               <Label htmlFor="maintenanceNotes">Note</Label>
               <Textarea
                 id="maintenanceNotes"
-                value={newMaintenance.notes}
+                value={newMaintenance.notes || ""}
                 onChange={(e) => setNewMaintenance({ ...newMaintenance, notes: e.target.value })}
                 placeholder="Note aggiuntive..."
                 rows={2}
@@ -1124,7 +1240,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       </Dialog>
 
       {/* Cost Details Dialog */}
-      <Dialog open={showCostDetails} onOpenChange={setShowCostDetails}>
+      <Dialog open={showCostDetails && !!selectedBike} onOpenChange={setShowCostDetails}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Dettaglio Costi - {selectedBike?.name}</DialogTitle>
@@ -1158,9 +1274,9 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     €{selectedBike.totalMaintenanceCost}
                   </div>
                   
-                  {selectedBike.maintenance.length > 0 ? (
+                  {(selectedBike.maintenance || []).length > 0 ? (
                     <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {selectedBike.maintenance.map((maintenance) => (
+                      {(selectedBike.maintenance || []).map((maintenance) => (
                         <div key={maintenance.id} className="flex justify-between items-center p-2 bg-muted/50 rounded text-xs">
                           <div>
                             <div className="font-medium">{maintenance.type}</div>

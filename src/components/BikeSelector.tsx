@@ -15,6 +15,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
   const getBikeTypeLabel = (type: string) => {
     switch (type) {
       case "trailer": return "Carrello";
+      case "carrello-porta-bimbi": return "Carrello Porta-Bimbi";
       default: return type;
     }
   };
@@ -47,15 +48,15 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
   };
 
   // Separa bici e carrelli
-  const bikes = availableBikes.filter(bike => bike.type !== "trailer");
-  const trailers = availableBikes.filter(bike => bike.type === "trailer");
+  const bikes = availableBikes.filter(bike => bike.type !== "trailer" && bike.type !== "carrello-porta-bimbi");
+  const trailers = availableBikes.filter(bike => bike.type === "trailer" || bike.type === "carrello-porta-bimbi");
 
   return (
     <div className="space-y-6">
       {/* Sezione Biciclette */}
       {bikes.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Biciclette Disponibili</h3>
+          <h3 className="text-lg font-semibold">Bici</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {bikes.map((bike, index) => {
               const selectedCount = getSelectedCount(bike);
@@ -120,7 +121,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
       {/* Sezione Carrelli */}
       {trailers.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Carrelli Disponibili</h3>
+          <h3 className="text-lg font-semibold">Carrelli</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {trailers.map((trailer, index) => {
               const selectedCount = getSelectedCount(trailer);
@@ -129,7 +130,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <BikeIcon className="w-5 h-5" />
-                      Carrello
+                      {getBikeTypeLabel(trailer.type)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
