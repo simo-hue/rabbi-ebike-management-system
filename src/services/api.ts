@@ -27,8 +27,10 @@ interface FixedCost {
   amount: number;
   category: string;
   frequency: 'monthly' | 'yearly' | 'one-time';
-  startDate: string;
-  isActive: boolean;
+  start_date: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ApiConfig {

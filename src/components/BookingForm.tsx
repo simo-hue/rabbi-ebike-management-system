@@ -177,6 +177,29 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
       newErrors.bikes = "Selezionare almeno 1 bici";
     }
 
+    // Validate trailer hook requirement
+    const totalTrailers = selectedBikes
+      .filter(bike => bike.type === "trailer" || bike.type === "carrello-porta-bimbi")
+      .reduce((sum, bike) => sum + bike.count, 0);
+    
+    const totalBikes = selectedBikes
+      .filter(bike => bike.type !== "trailer" && bike.type !== "carrello-porta-bimbi")
+      .reduce((sum, bike) => sum + bike.count, 0);
+    
+    const totalBikesWithHook = selectedBikes
+      .filter(bike => bike.type !== "trailer" && bike.type !== "carrello-porta-bimbi" && bike.hasTrailerHook)
+      .reduce((sum, bike) => sum + bike.count, 0);
+
+    // Check 1: Non ci possono essere solamente carrelli
+    if (totalTrailers > 0 && totalBikes === 0) {
+      newErrors.trailerHook = "Non puoi prenotare solo carrelli. Seleziona almeno una bicicletta.";
+    }
+    
+    // Check 2: Ci devono essere abbastanza bici con gancio per i carrelli
+    else if (totalTrailers > 0 && totalBikesWithHook < totalTrailers) {
+      newErrors.trailerHook = `Hai selezionato ${totalTrailers} carrelli ma solo ${totalBikesWithHook} bici con gancio. Servono almeno ${totalTrailers} bici con gancio traino.`;
+    }
+
     if (formData.category === "hourly" && formData.startTime >= formData.endTime) {
       newErrors.time = "L'orario di fine deve essere dopo quello di inizio";
     }
@@ -535,6 +558,60 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
           {errors.bikes && (
             <p className="text-sm text-destructive">{errors.bikes}</p>
           )}
+          {errors.trailerHook && (
+            <p className="text-sm text-destructive">{errors.trailerHook}</p>
+          )}
+
+          {/* Trailer Hook Info */}
+          {(() => {
+            const totalTrailers = selectedBikes
+              .filter(bike => bike.type === "trailer" || bike.type === "carrello-porta-bimbi")
+              .reduce((sum, bike) => sum + bike.count, 0);
+            
+            const totalBikes = selectedBikes
+              .filter(bike => bike.type !== "trailer" && bike.type !== "carrello-porta-bimbi")
+              .reduce((sum, bike) => sum + bike.count, 0);
+            
+            const totalBikesWithHook = selectedBikes
+              .filter(bike => bike.type !== "trailer" && bike.type !== "carrello-porta-bimbi" && bike.hasTrailerHook)
+              .reduce((sum, bike) => sum + bike.count, 0);
+
+            if (totalTrailers > 0) {
+              const hasEnoughHooks = totalBikesWithHook >= totalTrailers;
+              const hasAnyBikes = totalBikes > 0;
+              
+              return (
+                <Card className={`${hasEnoughHooks && hasAnyBikes ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-2">
+                      <div className={`w-5 h-5 ${hasEnoughHooks && hasAnyBikes ? 'bg-green-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center mt-0.5`}>
+                        <span className={`text-xs ${hasEnoughHooks && hasAnyBikes ? 'text-green-600' : 'text-yellow-600'}`}>
+                          {hasEnoughHooks && hasAnyBikes ? '✓' : '⚠'}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${hasEnoughHooks && hasAnyBikes ? 'text-green-800' : 'text-yellow-800'}`}>
+                          {hasEnoughHooks && hasAnyBikes ? 'Configurazione Valida' : 'Attenzione Gancio Traino'}
+                        </p>
+                        <p className={`text-sm ${hasEnoughHooks && hasAnyBikes ? 'text-green-700' : 'text-yellow-700'} mt-1`}>
+                          {!hasAnyBikes 
+                            ? "Serve almeno una bicicletta oltre ai carrelli."
+                            : totalTrailers === 1 
+                              ? `Hai selezionato 1 carrello. Serve almeno 1 bici con gancio traino.`
+                              : `Hai selezionato ${totalTrailers} carrelli. Servono almeno ${totalTrailers} bici con gancio traino.`
+                          }
+                        </p>
+                        <p className={`text-xs ${hasEnoughHooks && hasAnyBikes ? 'text-green-600' : 'text-yellow-600'} mt-1`}>
+                          Bici totali: {totalBikes} | Bici con gancio: {totalBikesWithHook}/{totalTrailers}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+            return null;
+          })()}
 
           {/* Price Estimation */}
           {estimatedPrice > 0 && (

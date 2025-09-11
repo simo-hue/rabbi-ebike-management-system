@@ -32,8 +32,10 @@ interface FixedCost {
   amount: number;
   category: string;
   frequency: 'monthly' | 'yearly' | 'one-time';
-  startDate: string;
-  isActive: boolean;
+  start_date: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface FixedCostsManagerProps {
@@ -68,8 +70,8 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
     amount: 0,
     category: "general",
     frequency: "monthly",
-    startDate: new Date().toISOString().split('T')[0],
-    isActive: true
+    start_date: new Date().toISOString().split('T')[0],
+    is_active: true
   });
 
   const fetchCosts = useCallback(async () => {
@@ -123,8 +125,8 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
         amount: 0,
         category: "general",
         frequency: "monthly",
-        startDate: new Date().toISOString().split('T')[0],
-        isActive: true
+        start_date: new Date().toISOString().split('T')[0],
+        is_active: true
       });
       setIsAddingCost(false);
       setEditingCost(null);
@@ -165,8 +167,8 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
       amount: cost.amount,
       category: cost.category,
       frequency: cost.frequency,
-      startDate: cost.startDate,
-      isActive: cost.isActive
+      start_date: cost.start_date,
+      is_active: cost.is_active
     });
     setIsAddingCost(true);
   };
@@ -206,11 +208,11 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
   };
 
   const totalAnnualCosts = costs
-    .filter(cost => cost.isActive)
+    .filter(cost => cost.is_active)
     .reduce((sum, cost) => sum + calculateAnnualCost(cost), 0);
 
   const totalMonthlyCosts = costs
-    .filter(cost => cost.isActive)
+    .filter(cost => cost.is_active)
     .reduce((sum, cost) => sum + calculateMonthlyCost(cost), 0);
 
   return (
@@ -247,7 +249,7 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">€{totalMonthlyCosts.toFixed(2)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {costs.filter(c => c.isActive).length} costi attivi
+                  {costs.filter(c => c.is_active).length} costi attivi
                 </p>
               </CardContent>
             </Card>
@@ -311,7 +313,7 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
                       const CategoryIcon = categoryInfo.icon;
                       
                       return (
-                        <TableRow key={cost.id} className={!cost.isActive ? "opacity-50" : ""}>
+                        <TableRow key={cost.id} className={!cost.is_active ? "opacity-50" : ""}>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <CategoryIcon className={`w-4 h-4 ${categoryInfo.color}`} />
@@ -333,8 +335,8 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
                           <TableCell className="text-right">€{calculateMonthlyCost(cost).toFixed(2)}</TableCell>
                           <TableCell className="text-right">€{calculateAnnualCost(cost).toFixed(2)}</TableCell>
                           <TableCell>
-                            <Badge variant={cost.isActive ? "default" : "secondary"}>
-                              {cost.isActive ? "Attivo" : "Inattivo"}
+                            <Badge variant={cost.is_active ? "default" : "secondary"}>
+                              {cost.is_active ? "Attivo" : "Inattivo"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
@@ -479,21 +481,21 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
               <div className="space-y-2">
                 <Label htmlFor="startDate">Data Inizio</Label>
                 <Input
-                  id="startDate"
+                  id="start_date"
                   type="date"
-                  value={newCost.startDate}
-                  onChange={(e) => setNewCost({ ...newCost, startDate: e.target.value })}
+                  value={newCost.start_date}
+                  onChange={(e) => setNewCost({ ...newCost, start_date: e.target.value })}
                 />
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
               <Switch
-                id="isActive"
-                checked={newCost.isActive}
-                onCheckedChange={(checked) => setNewCost({ ...newCost, isActive: checked })}
+                id="is_active"
+                checked={newCost.is_active}
+                onCheckedChange={(checked) => setNewCost({ ...newCost, is_active: checked })}
               />
-              <Label htmlFor="isActive">Costo attivo</Label>
+              <Label htmlFor="is_active">Costo attivo</Label>
             </div>
 
             {/* Cost Preview */}
@@ -523,8 +525,8 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
                   amount: 0,
                   category: "general",
                   frequency: "monthly",
-                  startDate: new Date().toISOString().split('T')[0],
-                  isActive: true
+                  start_date: new Date().toISOString().split('T')[0],
+                  is_active: true
                 });
               }}>
                 Annulla

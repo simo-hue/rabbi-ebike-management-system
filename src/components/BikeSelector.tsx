@@ -94,6 +94,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                         <Button
                           size="sm"
                           variant="outline"
+                          type="button"
                           onClick={() => updateSelection(bike, Math.max(0, selectedCount - 1))}
                           disabled={selectedCount === 0}
                         >
@@ -103,6 +104,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                         <Button
                           size="sm"
                           variant="outline"
+                          type="button"
                           onClick={() => updateSelection(bike, Math.min(bike.count, selectedCount + 1))}
                           disabled={selectedCount >= bike.count}
                         >
@@ -145,6 +147,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                         <Button
                           size="sm"
                           variant="outline"
+                          type="button"
                           onClick={() => updateSelection(trailer, Math.max(0, selectedCount - 1))}
                           disabled={selectedCount === 0}
                         >
@@ -154,6 +157,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
                         <Button
                           size="sm"
                           variant="outline"
+                          type="button"
                           onClick={() => updateSelection(trailer, Math.min(trailer.count, selectedCount + 1))}
                           disabled={selectedCount >= trailer.count}
                         >

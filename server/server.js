@@ -50,16 +50,20 @@ const validateRequired = (fields, data) => {
 
 // Enhanced data validation helpers
 const validateEmail = (email) => {
-  if (!email) return true; // Optional field
+  // Allow null, undefined, or empty strings (optional field)
+  if (!email || typeof email !== 'string' || email.trim() === '') return true;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return emailRegex.test(email.trim());
 };
 
 const validatePhone = (phone) => {
-  if (!phone) return false;
-  // Italian phone number validation (basic)
-  const phoneRegex = /^[\+]?[0-9\s\-\(\)]{8,15}$/;
-  return phoneRegex.test(phone);
+  // Allow null, undefined, or empty strings (optional field)
+  if (!phone || typeof phone !== 'string' || phone.trim() === '') return true;
+  // Clean phone number for validation
+  const cleanPhone = phone.trim().replace(/\s/g, '');
+  // More flexible phone number validation - allow various formats
+  const phoneRegex = /^[\+]?[0-9\-\(\)\s]{6,20}$/;
+  return phoneRegex.test(cleanPhone) && cleanPhone.length >= 6;
 };
 
 const validateTimeFormat = (time) => {
@@ -73,12 +77,20 @@ const validateBikeType = (type) => {
   return validTypes.includes(type);
 };
 
-const validateBikeSize = (size) => {
+const validateBikeSize = (size, bikeType) => {
+  // Trailers don't require size
+  if (bikeType === 'trailer' || bikeType === 'carrello-porta-bimbi') {
+    return !size || size === null || size === undefined; // Should be empty for trailers
+  }
   const validSizes = ['S', 'M', 'L', 'XL'];
   return validSizes.includes(size);
 };
 
-const validateBikeSuspension = (suspension) => {
+const validateBikeSuspension = (suspension, bikeType) => {
+  // Trailers don't require suspension
+  if (bikeType === 'trailer' || bikeType === 'carrello-porta-bimbi') {
+    return !suspension || suspension === null || suspension === undefined; // Should be empty for trailers
+  }
   const validSuspensions = ['full-suspension', 'front-only'];
   return validSuspensions.includes(suspension);
 };
@@ -661,11 +673,11 @@ app.get('/api/fixed-costs', (req, res) => {
 });
 
 app.post('/api/fixed-costs', (req, res) => {
-  const { name, description, amount, category, frequency, startDate } = req.body;
+  const { name, description, amount, category, frequency, start_date } = req.body;
   
   db.run(`INSERT INTO fixed_costs (name, description, amount, category, frequency, start_date) 
           VALUES (?, ?, ?, ?, ?, ?)`, 
-    [name, description || null, amount, category || 'general', frequency || 'monthly', startDate || new Date().toISOString().split('T')[0]], 
+    [name, description || null, amount, category || 'general', frequency || 'monthly', start_date || new Date().toISOString().split('T')[0]], 
     function(err) {
       if (err) {
         return res.status(500).json({ error: err.message });
@@ -684,10 +696,9 @@ app.put('/api/fixed-costs/:id', (req, res) => {
   const values = [];
   
   Object.keys(updates).forEach(key => {
-    const dbField = key === 'startDate' ? 'start_date' : key === 'isActive' ? 'is_active' : key;
-    if (allowedFields.includes(dbField)) {
-      setClause.push(`${dbField} = ?`);
-      values.push(key === 'isActive' ? (updates[key] ? 1 : 0) : updates[key]);
+    if (allowedFields.includes(key)) {
+      setClause.push(`${key} = ?`);
+      values.push(key === 'is_active' ? (updates[key] ? 1 : 0) : updates[key]);
     }
   });
   
@@ -958,8 +969,8 @@ app.post('/api/bookings', (req, res) => {
     ip: req.ip || req.connection.remoteAddress
   });
   
-  // Validate required fields
-  const missing = validateRequired(['customerName', 'phone', 'startTime', 'endTime', 'date', 'category'], req.body);
+  // Validate required fields (phone and email are optional)
+  const missing = validateRequired(['customerName', 'startTime', 'endTime', 'date', 'category'], req.body);
   if (missing.length > 0) {
     logger.warn('BOOKING_CREATE', 'Booking creation failed - missing fields', {
       bookingId: id,
@@ -970,24 +981,26 @@ app.post('/api/bookings', (req, res) => {
     return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
   }
 
-  // Validate email format
-  if (email && !validateEmail(email)) {
+  // Sanitize and validate email format
+  const sanitizedEmail = email && typeof email === 'string' ? email.trim() : null;
+  if (sanitizedEmail && !validateEmail(sanitizedEmail)) {
     logger.warn('BOOKING_CREATE', 'Booking creation failed - invalid email format', {
       bookingId: id,
       customerName,
-      email,
+      email: sanitizedEmail,
       phone
     });
     return res.status(400).json({ error: 'Invalid email format' });
   }
 
-  // Validate phone format
-  if (!validatePhone(phone)) {
+  // Sanitize and validate phone format
+  const sanitizedPhone = phone && typeof phone === 'string' ? phone.trim() : null;
+  if (sanitizedPhone && !validatePhone(sanitizedPhone)) {
     logger.warn('BOOKING_CREATE', 'Booking creation failed - invalid phone format', {
       bookingId: id,
       customerName,
-      phone,
-      email
+      phone: sanitizedPhone,
+      email: sanitizedEmail
     });
     return res.status(400).json({ error: 'Invalid phone number format' });
   }
@@ -1037,13 +1050,13 @@ app.post('/api/bookings', (req, res) => {
       console.log('[ERROR] Invalid bike type:', bike.type);
       return res.status(400).json({ error: `Invalid bike type: ${bike.type}` });
     }
-    if (!validateBikeSize(bike.size)) {
-      console.log('[ERROR] Invalid bike size:', bike.size);
-      return res.status(400).json({ error: `Invalid bike size: ${bike.size}` });
+    if (!validateBikeSize(bike.size, bike.type)) {
+      console.log('[ERROR] Invalid bike size:', bike.size, 'for type:', bike.type);
+      return res.status(400).json({ error: `Invalid bike size: ${bike.size} for type: ${bike.type}` });
     }
-    if (!validateBikeSuspension(bike.suspension)) {
-      console.log('[ERROR] Invalid bike suspension:', bike.suspension);
-      return res.status(400).json({ error: `Invalid bike suspension: ${bike.suspension}` });
+    if (!validateBikeSuspension(bike.suspension, bike.type)) {
+      console.log('[ERROR] Invalid bike suspension:', bike.suspension, 'for type:', bike.type);
+      return res.status(400).json({ error: `Invalid bike suspension: ${bike.suspension} for type: ${bike.type}` });
     }
     if (!Number.isInteger(bike.count) || bike.count <= 0) {
       console.log('[ERROR] Invalid bike count:', bike.count);
@@ -1060,7 +1073,7 @@ app.post('/api/bookings', (req, res) => {
       id, customer_name, phone, email, start_time, end_time, booking_date, 
       category, needs_guide, status, total_price
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
-      id, customerName.trim(), phone.trim(), email?.trim() || null, startTime, endTime, 
+      id, customerName.trim(), sanitizedPhone || null, sanitizedEmail || null, startTime, endTime, 
       bookingDate, category, needsGuide, status, parsedPrice
     ], function(err) {
       if (err) {
