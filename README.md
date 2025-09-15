@@ -14,16 +14,17 @@
 ![GitHub language count](https://img.shields.io/github/languages/count/simo-hue/rabbi-ebike-management-system)
 ![GitHub top language](https://img.shields.io/github/languages/top/simo-hue/rabbi-ebike-management-system)
 
-**Sistema gestionale professionale completo per noleggio biciclette elettriche** con interfaccia web moderna, database locale SQLite e funzionalità avanzate di booking, inventario e statistiche.
+**Sistema gestionale professionale per negozi di noleggio biciclette** che funziona **completamente offline** sul computer del negozio. Interfaccia web moderna, database locale SQLite e funzionalità complete per gestione quotidiana.
 
 ## 🌟 **Perché Scegliere Rabbi E-Bike Management**
 
-✨ **Facile da Usare**: Interfaccia intuitiva progettata per operatori non tecnici  
+🏪 **Perfetto per Negozi**: Progettato per l'uso quotidiano in negozi di noleggio bici  
+🔌 **Funziona Offline**: Zero dipendenze internet, tutto sul tuo computer  
 ⚡ **Veloce**: Database locale SQLite per performance immediate  
-🔒 **Sicuro**: Tutti i dati salvati localmente, controllo totale  
-📱 **Responsive**: Funziona perfettamente su desktop, tablet e smartphone  
-🆓 **Open Source**: Completamente gratuito e personalizzabile  
-🚀 **Pronto all'Uso**: Setup in 5 minuti, dati preconfigurati inclusi
+🔒 **Dati Tuoi**: Tutti i dati salvati localmente, controllo totale  
+📱 **Multi-Dispositivo**: Accessibile da computer, tablet e smartphone del negozio  
+🆓 **Gratuito**: Completamente open source, zero costi nascosti  
+🚀 **Setup Veloce**: Installazione guidata, si avvia automaticamente con il PC
 
 ## 🚴‍♂️ Funzionalità Principali
 
@@ -152,151 +153,57 @@ rabbieebike/
 - **Manuali:** quando necessario dal pannello Developer
 - **Ripristino:** sostituisci il file database con un backup
 
-## 🔧 Installazione e Setup (Guida Completa)
+## 🔧 Installazione e Setup
 
-### **Prerequisiti**
-Prima di iniziare, assicurati di avere installato:
+### 📖 Guide Dettagliate per ogni Utente
 
-1. **Node.js** (versione 16 o superiore)
-   - Scarica da [nodejs.org](https://nodejs.org/)
-   - Per verificare l'installazione: `node --version` e `npm --version`
+Scegli la guida più adatta alle tue competenze tecniche:
 
-### **Passo 1: Preparazione Files**
-1. Scarica o clona il progetto sul tuo computer
-2. Apri il **Terminale** (su Mac) o **Prompt dei comandi** (su Windows)
-3. Naviga nella cartella del progetto:
-   ```bash
-   cd /percorso/alla/cartella/rabbieebike
-   ```
+| 👥 **Tipo di Utente** | 📚 **Guida** | ⏱️ **Tempo** | 📄 **Descrizione** |
+|---|---|---|---|
+| 🔰 **Proprietari Negozi** | [**Guida Principianti**](docs/INSTALLAZIONE-PRINCIPIANTI.md) | 30-45 min | **USO LOCALE PERMANENTE** - Perfetta per negozi. Avvio automatico, backup, accesso multi-dispositivo |
+| 🏪 **Setup Locale Completo** | [**Installazione Locale**](docs/INSTALLAZIONE-LOCALE.md) | 45-60 min | **Computer negozio permanente** - PM2, rete locale, tablet/smartphone, manutenzione |
+| 🪟 **Negozi Windows** | [**Guida Windows**](docs/INSTALLAZIONE-WINDOWS.md) | 20-60 min | **Windows negozio** - Script automatici, PM2, servizi Windows, gestione quotidiana |
+| 👨‍💻 **Sviluppatori/Tecnici** | [**Guida Sviluppatori**](docs/INSTALLAZIONE-SVILUPPATORI.md) | 15-20 min | Development environment, architettura, API reference, debugging, personalizzazioni |
+| 🛠️ **Personalizzazione** | [**Personalizzazione Negozi**](docs/PERSONALIZZAZIONE-NEGOZI.md) | 1-3 ore | Branding, funzionalità custom, integrazioni hardware, multi-lingua |
+| 🏭 **Enterprise/Cloud** | [**Deploy Produzione**](docs/INSTALLAZIONE-PRODUZIONE.md) | 1-2 ore | VPS, cloud deployment, Docker, SSL, monitoraggio, scaling |
 
-### **Passo 2: Installazione Dipendenze Frontend**
+### ⚡ Quick Start (per Esperti)
+
 ```bash
-# Installa le dipendenze del frontend
+# Clone repository
+git clone https://github.com/simo-hue/rabbi-ebike-management-system.git rabbieebike
+cd rabbieebike
+
+# Install dependencies
 npm install
-```
+cd server && npm install && cd ..
 
-### **Passo 3: Installazione e Avvio Server Backend**
-```bash
-# Vai nella cartella server
-cd server
+# Start development (requires 2 terminals)
+# Terminal 1: Backend
+cd server && npm start
 
-# Installa le dipendenze del server
-npm install
-
-# Avvia il server (lascia aperto questo terminale)
-npm start
-```
-**✅ Il server sarà disponibile su:** `http://localhost:3001`
-
-### **Passo 4: Avvio Frontend (Nuovo Terminale)**
-Apri un **nuovo terminale** e:
-```bash
-# Torna nella cartella principale del progetto
-cd /percorso/alla/cartella/rabbieebike
-
-# Avvia il frontend
+# Terminal 2: Frontend  
 npm run dev
-```
-**✅ L'applicazione sarà disponibile su:** `http://localhost:8080`
 
-### **Utilizzo Quotidiano**
-Dopo la prima installazione, per utilizzare il software:
-
-1. **Avvia il server** (terminale 1):
-   ```bash
-   cd server
-   npm start
-   ```
-
-2. **Avvia il frontend** (terminale 2):
-   ```bash
-   npm run dev
-   ```
-
-3. **Apri il browser** su `http://localhost:8080`
-
-### **🔄 Tenere il Server Sempre in Background**
-
-#### **Opzione 1: PM2 (Raccomandato per Uso Professionale)**
-
-**Installazione PM2:**
-```bash
-# Installa PM2 globalmente
-npm install -g pm2
+# Open: http://localhost:8080
 ```
 
-**Configurazione PM2 per il server:**
-```bash
-# Vai nella cartella server
-cd server
+### 💡 Hai Bisogno di Aiuto?
 
-# Avvia il server con PM2
-pm2 start server.js --name "rabbi-ebike-server"
+- **🏪 Hai un negozio di noleggio bici?** → Inizia con la [**Guida Principianti**](docs/INSTALLAZIONE-PRINCIPIANTI.md)
+- **💻 Vuoi setup locale permanente?** → Consulta la [**Installazione Locale**](docs/INSTALLAZIONE-LOCALE.md)
+- **🪟 Usi computer Windows?** → Vai alla [**Guida Windows**](docs/INSTALLAZIONE-WINDOWS.md)
+- **🛠️ Vuoi personalizzare il sistema?** → Consulta la [**Personalizzazione Negozi**](docs/PERSONALIZZAZIONE-NEGOZI.md)
+- **👨‍💻 Sei uno sviluppatore?** → Consulta la [**Guida Sviluppatori**](docs/INSTALLAZIONE-SVILUPPATORI.md)  
+- **🏭 Deploy enterprise/cloud?** → Consulta la [**Deploy Produzione**](docs/INSTALLAZIONE-PRODUZIONE.md)
 
-# Verifica che sia in esecuzione
-pm2 status
+### 📋 Dopo l'Installazione
 
-# Configura PM2 per avviarsi automaticamente al boot del sistema
-pm2 startup
-pm2 save
-```
-
-**Comandi Utili PM2:**
-```bash
-pm2 status                    # Visualizza stato processi
-pm2 logs rabbi-ebike-server   # Visualizza log in tempo reale
-pm2 restart rabbi-ebike-server # Riavvia il server
-pm2 stop rabbi-ebike-server    # Ferma il server
-pm2 delete rabbi-ebike-server  # Elimina processo da PM2
-```
-
-#### **Opzione 2: Terminale in Background (macOS/Linux)**
-
-**Con nohup:**
-```bash
-# Avvia server in background
-cd server
-nohup npm start > server.log 2>&1 &
-
-# Trova il processo per fermarlo
-ps aux | grep node
-kill [PID_DEL_PROCESSO]
-```
-
-#### **Opzione 3: Windows - Servizio Windows**
-
-**Usando node-windows:**
-```bash
-# Installa node-windows
-npm install -g node-windows
-
-# Crea script per servizio Windows (da eseguire come amministratore)
-node-windows install --name "Rabbi E-Bike Server" --script "C:\\percorso\\server\\server.js"
-```
-
-#### **Opzione 4: Docker (Avanzato)**
-
-**Crea Dockerfile nella cartella server:**
-```dockerfile
-FROM node:16
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3001
-CMD ["npm", "start"]
-```
-
-**Comandi Docker:**
-```bash
-# Build immagine
-docker build -t rabbi-ebike-server .
-
-# Esegui container
-docker run -d -p 3001:3001 -v $(pwd)/rabbi_ebike.db:/app/rabbi_ebike.db --name rabbi-server rabbi-ebike-server
-```
-
-3. **Apri il browser** su `http://localhost:8080`
+Una volta completato il setup, consulta:
+- [Come utilizzare il software](#-come-utilizzare-il-software-guida-operativa) per l'uso quotidiano
+- [Prima configurazione completa](#-prima-configurazione-completa-step-by-step) per personalizzare il sistema
+- [Risoluzione problemi](#-risoluzione-problemi-completa) in caso di difficoltà
 
 ## 🚀 Prima Configurazione Completa (Step-by-Step)
 
