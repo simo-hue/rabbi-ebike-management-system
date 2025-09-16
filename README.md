@@ -28,17 +28,39 @@
 
 ## 🚴‍♂️ Funzionalità Principali
 
-### 📅 **Gestione Prenotazioni**
+### 📅 **Gestione Prenotazioni Avanzata**
 - **Calendario interattivo** per visualizzare e gestire le prenotazioni
+- **Vista Timeline Giornaliera** - Timeline interattiva con orari di partenza/rientro
 - **Prenotazioni in tempo reale** con controllo disponibilità biciclette
 - **Categorie flessibili**: oraria, mezza giornata, giornata intera
 - **Servizio guida opzionale** con tariffazione separata
 - **Stati prenotazione**: confermata, in corso, completata, cancellata
+- **Calendario Mensile e Settimanale** con viste dettagliate
+- **Tracking attività giornaliere** con statistiche in tempo reale
+
+![Calendario e Disponibilità](img_documentazione/CalendarioEDisponibilità.png)
+
+*Vista calendario principale con gestione prenotazioni*
+
+![Prenotazioni Mensili](img_documentazione/PrenotazioniMenisili.png)
+
+*Vista mensile delle prenotazioni*
+
+![Prenotazioni Settimanali](img_documentazione/PrenotazioniSettimanali.png)
+
+*Vista settimanale dettagliata*
 
 ### 🏪 **Configurazione Negozio**
 - **Impostazioni generali**: nome negozio, telefono, email, orari
 - **Gestione prezzi**: tariffe orarie, giornaliere, servizio guida
+- **Regole business avanzate**: giorni massimi prenotazione, ore minime
+- **Sistema notifiche**: email admin, SMS, promemoria manutenzione
+- **Algoritmi pricing**: moltiplicatori ora di punta, sconti stagionali, pricing dinamico
 - **Inventario biciclette**: gestione completa del garage virtuale
+
+![Pannello Impostazioni](img_documentazione/PannelloImpostazioni.png)
+
+*Pannello impostazioni avanzate del negozio*
 
 ### 🚲 **Garage Virtuale Avanzato**
 - **Gestione inventario completa** con tipi, taglie e sospensioni
@@ -46,14 +68,22 @@
 - **Taglie**: S, M, L, XL
 - **Sospensioni**: Solo anteriore, Full-suspension
 - **Indicatori ganci carrello** per bici compatibili
-- **Gestione manutenzione** per ogni bicicletta:
-  - Storico manutenzioni con costi
-  - Calcolo profittabilità per singola bici
+- **Creazione bulk**: aggiungi multiple bici identiche con quantità
+- **Gestione manutenzione individuale** per ogni bicicletta:
+  - Storico manutenzioni con costi dettagliati
+  - Calcolo profittabilità per singola bici (acquisto + manutenzione vs ricavi)
   - Monitoraggio costi totali di mantenimento
+  - Scheduling manutenzione programmata
 - **Analytics per bici**:
   - Statistiche utilizzo individuale
   - Costi vs ricavi per ogni bicicletta
   - Identificazione bici più/meno profittevoli
+  - ROI per singola bicicletta
+  - Ranking bici per popolarità e ricavi
+
+![Garage](img_documentazione/Garage.png)
+
+*Vista garage avanzato con gestione inventario e manutenzioni*
 
 ### 📊 **Analytics e Business Intelligence Avanzate**
 - **Dashboard Statistiche** con metriche giornaliere, settimanali, mensili e annuali
@@ -62,6 +92,12 @@
   - Top performers con classifiche e metriche avanzate
   - Analisi break-even e margini di profitto
   - Tasso di utilizzo delle biciclette in tempo reale
+  - Export dati analytics in CSV e JSON
+- **Metriche Performance Avanzate**:
+  - Tassi di conferma e cancellazione prenotazioni
+  - Analisi ore di punta e utilizzo flotta
+  - Metriche clienti unici serviti
+  - Breakdown ricavi per categoria e servizi guida
 - **Gestione Costi Fissi Completa**:
   - Costi predefiniti (affitto, assicurazione, utenze, internet)
   - Categorie personalizzabili e frequenze (mensile, annuale, una tantum)
@@ -70,16 +106,37 @@
 - **Monitoraggio performance** server e business
 - **Sistema di backup completo** automatico e manuale
 
-### ⚙️ **Pannello Sviluppatore Avanzato**
-- **Configurazione server**: porta, backup, debug
-- **Gestione database**: backup completo, ripristino, statistiche
-- **Log sistema** dettagliati per troubleshooting
-- **Backup e Ripristino Completo**:
-  - Export di TUTTI i dati (prenotazioni, bici, impostazioni, configurazioni, costi)
-  - Import con validazione e conferma
-  - Backup automatici programmabili
-  - Ripristino completo del sistema da backup
-- **Monitoraggio performance** in tempo reale
+![Analytics Avanzate](img_documentazione/AnalyticsAvanzate.png)
+
+*Dashboard Analytics 360° con business intelligence completa*
+
+![Home Screen](img_documentazione/homeScreen.png)
+
+*Schermata principale del sistema di gestione*
+
+### ⚙️ **Pannello Sviluppatore Avanzato (7 Tab Completo)**
+- **Setup Guide**: guida installazione con tracking progresso
+- **Test Connessione**: diagnostica e configurazione connettività
+- **Configurazione Server**: porta, backup automatici, debug
+- **Impostazioni E-bike Avanzate**:
+  - Regole business (giorni max prenotazione, ore minime)
+  - Sistema notifiche (email, SMS, manutenzione)
+  - Algoritmi pricing (moltiplicatori, sconti stagionali, pricing dinamico)
+  - Funzionalità avanzate (integrazione meteo, GPS tracking, assicurazione)
+- **Gestione Database**: backup completo, ripristino, statistiche, ottimizzazioni
+- **Monitoraggio Performance**: metriche tempo reale, uptime, response time
+- **Tools Avanzati**: export/import completo, reset sistema, log management
+- **Sistema Logging Completo**:
+  - Log multi-livello (debug, info, warn, error)
+  - Tracking richieste/risposte con metriche performance
+  - Rotazione log automatica
+  - Download log per analisi
+- **Backup e Ripristino 2.0**:
+  - Export di TUTTI i dati con metadata e validazione
+  - Import con backup validation e rollback automatico
+  - Backup automatici programmabili con cleanup
+  - Ripristino completo del sistema con controlli integrità
+  - Gestione versioni backup per compatibilità
 
 ## 🗄️ Come Funziona il Salvataggio dei Dati
 
@@ -387,7 +444,34 @@ Nuovo modulo per controllo completo dei costi:
 - **Garage Avanzato**: manutenzioni e profittabilità per singola bici
 - **Backup**: salva periodicamente i dati (sezione Developer)
 
-## 🎯 **Nuove Funzionalità Avanzate**
+## 🎯 **Funzionalità Tecniche Avanzate**
+
+### 🚀 **Sistema di Ottimizzazione Performance**
+Il sistema include avanzate ottimizzazioni per massimizzare le performance:
+
+#### **⚡ Performance Client-Side**
+- **Sistema Caching Intelligente** con invalidazione pattern-based
+- **Debouncing UI** per ottimizzare interazioni utente
+- **Memoizzazione Componenti** per rendering ottimizzato
+- **Lazy Loading** di componenti pesanti (Statistics, Analytics, DevPanel)
+- **Storage TTL** con scadenza automatica
+- **Error Boundaries** con recupero automatico
+- **Monitoraggio Performance** component-level in tempo reale
+
+#### **🔄 Sistema API Avanzato**
+- **Cache Intelligente** con pattern matching per invalidazione
+- **Fallback Offline** con storage locale
+- **Timeout Management** ottimizzato per performance negozio (8s)
+- **Retry Automatico** per connessioni fallite
+- **Health Monitoring** server ogni 30 secondi
+- **Request/Response Tracking** con metriche dettagliate
+
+#### **🛠️ Database Optimization**
+- **Routine Ottimizzazione** automatiche scheduladas
+- **Memory Cleanup** programmato
+- **Performance Middleware** shop-specific
+- **Vacuum/Analyze** automatico del database SQLite
+- **Schema Avanzato** per analytics e costi fissi
 
 ### 📈 **Analytics 360° - Business Intelligence**
 Il sistema ora include un potente modulo di analytics che offre:
@@ -626,10 +710,27 @@ sqlite3 server/rabbi_ebike.db "SELECT 'settings', COUNT(*) FROM settings UNION A
   - `/api/analytics/bike-performance` - Performance biciclette
   - `/api/analytics/revenue-breakdown` - Analisi ricavi e costi
   - `/api/fixed-costs` - Gestione CRUD costi fissi
+  - `/api/individual-bikes` - Gestione bici individuali con manutenzioni
+  - `/api/data/export` - Export completo sistema
+  - `/api/data/import` - Import con validazione
+  - `/api/data/reset` - Reset completo applicazione
+  - `/api/logs` - Management log sistema
+  - `/api/monitoring/metrics` - Metriche performance
+  - `/api/monitoring/logs` - Accesso log real-time
+- **Sistema Database Avanzato**:
+  - Schema ottimizzato con `fixed_costs`, `individual_bikes`, `server_config`
+  - Ottimizzazioni automatiche e cleanup memoria
+  - Analytics tables per tracking performance
 - **Backup System 2.0**:
-  - Export completo con schema database
-  - Import con validazione e rollback
-  - Backup automatici programmabili
+  - Export completo con schema database e metadata
+  - Import con validazione e rollback automatico
+  - Backup automatici programmabili con cleanup
+  - Gestione versioni per compatibilità
+- **Logging e Monitoring**:
+  - Sistema log multi-livello (debug, info, warn, error)
+  - Performance tracking con response time e uptime
+  - Rotazione automatica log
+  - Health monitoring ogni 30 secondi
 
 ## 🚨 Risoluzione Problemi Completa
 
@@ -945,9 +1046,35 @@ Se questo sistema ti è utile:
 - 🐛 **Segnala bug** o **richiedi funzionalità**
 - 📢 **Condividi** con altri proprietari di bike rental
 
+## 📸 **Galleria Screenshots**
+
+### **Dashboard Principale**
+![Home Screen](img_documentazione/homeScreen.png)
+*Schermata principale con panoramica del sistema*
+
+### **Gestione Prenotazioni**
+![Calendario e Disponibilità](img_documentazione/CalendarioEDisponibilità.png)
+*Vista calendario principale con gestione prenotazioni e disponibilità*
+
+![Prenotazioni Mensili](img_documentazione/PrenotazioniMenisili.png)
+*Vista mensile completa delle prenotazioni*
+
+![Prenotazioni Settimanali](img_documentazione/PrenotazioniSettimanali.png)
+*Vista settimanale dettagliata per pianificazione*
+
+### **Analytics e Configurazione**
+![Analytics Avanzate](img_documentazione/AnalyticsAvanzate.png)
+*Dashboard Analytics 360° con business intelligence*
+
+![Garage](img_documentazione/Garage.png)
+*Gestione garage avanzato con inventario e manutenzioni*
+
+![Pannello Impostazioni](img_documentazione/PannelloImpostazioni.png)
+*Pannello configurazione avanzata del negozio*
+
 ## 🏷️ **Tag e Keywords**
 
-`bike-rental` `ebike-management` `booking-system` `react-typescript` `nodejs-sqlite` `rental-dashboard` `inventory-management` `bicycle-rental` `electric-bike` `booking-calendar` `business-management` `open-source` `responsive-web-app` `local-database` `pwa-ready`
+`bike-rental` `ebike-management` `booking-system` `react-typescript` `nodejs-sqlite` `rental-dashboard` `inventory-management` `bicycle-rental` `electric-bike` `booking-calendar` `business-management` `open-source` `responsive-web-app` `local-database` `pwa-ready` `analytics-dashboard` `performance-optimization` `real-time-monitoring` `advanced-backup` `business-intelligence` `cost-management` `maintenance-tracking` `multi-device`
 
 ---
 
