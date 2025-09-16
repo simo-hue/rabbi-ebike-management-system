@@ -4,6 +4,8 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const logger = require('./logger');
+const { DatabaseOptimizer, MaintenanceScheduler } = require('./database-optimizer');
+const { optimizedMiddleware, scheduleMemoryCleanup, LightweightMonitor } = require('./optimizations');
 
 const app = express();
 const PORT = process.env.PORT || 9273;
@@ -13,6 +15,9 @@ let requestCount = 0;
 let errorCount = 0;
 let totalResponseTime = 0;
 const startTime = Date.now();
+
+// Initialize lightweight monitoring for shop performance
+const shopMonitor = new LightweightMonitor();
 
 // Legacy log compatibility - redirect to new logger
 const addLog = (level, message, details = null) => {
@@ -109,6 +114,9 @@ const validateBookingCategory = (category) => {
 app.use(cors());
 app.use(bodyParser.json());
 
+// Add optimized middleware for shop performance
+app.use(optimizedMiddleware);
+
 // Enhanced performance tracking middleware with detailed logging
 app.use((req, res, next) => {
   const start = Date.now();
@@ -128,6 +136,13 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     totalResponseTime += duration;
     
+    // Update shop monitoring
+    shopMonitor.logRequest();
+    if (res.statusCode >= 400) {
+      shopMonitor.logError();
+      errorCount++;
+    }
+    
     // Log response details
     const logLevel = res.statusCode >= 400 ? 'warn' : 'debug';
     addLog(logLevel, `${req.method} ${req.path} - ${res.statusCode}`, {
@@ -135,10 +150,6 @@ app.use((req, res, next) => {
       duration: `${duration}ms`,
       statusCode: res.statusCode
     });
-    
-    if (res.statusCode >= 400) {
-      errorCount++;
-    }
     
     // Use new logger for request logging
     logger.logRequest(req, res, start);
@@ -215,6 +226,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
         }
       })()
     });
+    
+    // Initialize database optimizer for shop performance
+    initializeDatabaseOptimizer();
   }
 });
 
@@ -1274,6 +1288,8 @@ app.get('/api/monitoring/metrics', (req, res) => {
   
   // Calculate recent activity (last 5 minutes)
   const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+  // For now, return empty logs array - in a full implementation this would come from the logger
+  const logs = [];
   const recentLogs = logs.filter(log => new Date(log.timestamp).getTime() > fiveMinutesAgo);
   const recentErrors = recentLogs.filter(log => log.level === 'error').length;
   const recentWarnings = recentLogs.filter(log => log.level === 'warn').length;
@@ -1311,6 +1327,7 @@ app.get('/api/monitoring/metrics', (req, res) => {
 
 // Get logs
 app.get('/api/monitoring/logs', (req, res) => {
+  const logs = []; // In una implementazione completa, questa verrebbe dal logger
   res.json(logs);
 });
 
@@ -1598,6 +1615,200 @@ app.post('/api/data/import', (req, res) => {
     addLog('error', 'Failed to import/restore data', error.message);
     res.status(500).json({ 
       error: 'Failed to restore system from backup', 
+      details: error.message 
+    });
+  }
+});
+
+// Reset application to initial state - COMPLETE RESET
+app.post('/api/data/reset', (req, res) => {
+  try {
+    addLog('warn', 'Complete application reset requested - this will delete ALL data');
+    logger.warn('SYSTEM', 'Complete application reset initiated', {
+      timestamp: new Date().toISOString(),
+      requestOrigin: req.ip
+    });
+    
+    // Create automatic backup before reset for safety
+    try {
+      const preResetBackup = {
+        exportDate: new Date().toISOString(),
+        version: '2.0',
+        description: 'Automatic backup before complete reset operation',
+        data: {
+          bookings: db.prepare('SELECT * FROM bookings').all(),
+          booking_bikes: db.prepare('SELECT * FROM booking_bikes').all(),
+          bikes: db.prepare('SELECT * FROM bikes').all(),
+          settings: db.prepare('SELECT * FROM settings').all(),
+          server_config: db.prepare('SELECT * FROM server_config').all(),
+          individual_bikes: db.prepare('SELECT * FROM individual_bikes').all(),
+          fixed_costs: db.prepare('SELECT * FROM fixed_costs').all(),
+          bike_usage_analytics: db.prepare('SELECT * FROM bike_usage_analytics').all(),
+          revenue_analytics: db.prepare('SELECT * FROM revenue_analytics').all()
+        }
+      };
+      
+      const fs = require('fs');
+      const backupPath = path.join(__dirname, 'backups', `pre-reset-${Date.now()}.json`);
+      
+      // Ensure backups directory exists
+      if (!fs.existsSync(path.join(__dirname, 'backups'))) {
+        fs.mkdirSync(path.join(__dirname, 'backups'), { recursive: true });
+      }
+      
+      fs.writeFileSync(backupPath, JSON.stringify(preResetBackup, null, 2));
+      addLog('info', `Pre-reset backup created: ${backupPath}`);
+      logger.info('BACKUP', 'Pre-reset backup created', { backupPath });
+    } catch (backupErr) {
+      addLog('error', 'Failed to create pre-reset backup', backupErr.message);
+      logger.error('BACKUP', 'Failed to create pre-reset backup', { error: backupErr.message });
+      return res.status(500).json({ error: 'Failed to create safety backup before reset' });
+    }
+
+    // Begin transaction for complete reset
+    db.serialize(() => {
+      try {
+        addLog('info', 'Starting complete database reset...');
+        
+        // Clear all data tables
+        const clearTables = [
+          'DELETE FROM booking_bikes',
+          'DELETE FROM bookings', 
+          'DELETE FROM individual_bikes',
+          'DELETE FROM fixed_costs',
+          'DELETE FROM bike_usage_analytics',
+          'DELETE FROM revenue_analytics'
+        ];
+        
+        clearTables.forEach(sql => {
+          const result = db.prepare(sql).run();
+          addLog('info', `Cleared table: ${sql.split(' ')[2]} (${result.changes} rows deleted)`);
+        });
+        
+        // Reset settings to default values
+        const defaultSettings = {
+          shop_name: 'Rabbi E-Bike',
+          phone: '+39 000 000 0000',
+          email: 'info@rabbiebikerentals.com',
+          opening_time: '09:00',
+          closing_time: '18:00',
+          pricing_hourly: 15,
+          pricing_half_day: 40,
+          pricing_full_day: 70,
+          pricing_guide_hourly: 25,
+          pricing_trailer_hourly: 8,
+          pricing_trailer_half_day: 20,
+          pricing_trailer_full_day: 35
+        };
+        
+        // Reset settings
+        const settingsStmt = db.prepare(`
+          INSERT OR REPLACE INTO settings 
+          (id, shop_name, phone, email, opening_time, closing_time, 
+           pricing_hourly, pricing_half_day, pricing_full_day, pricing_guide_hourly,
+           pricing_trailer_hourly, pricing_trailer_half_day, pricing_trailer_full_day,
+           created_at, updated_at)
+          VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        settingsStmt.run([
+          defaultSettings.shop_name,
+          defaultSettings.phone,
+          defaultSettings.email,
+          defaultSettings.opening_time,
+          defaultSettings.closing_time,
+          defaultSettings.pricing_hourly,
+          defaultSettings.pricing_half_day,
+          defaultSettings.pricing_full_day,
+          defaultSettings.pricing_guide_hourly,
+          defaultSettings.pricing_trailer_hourly,
+          defaultSettings.pricing_trailer_half_day,
+          defaultSettings.pricing_trailer_full_day,
+          new Date().toISOString(),
+          new Date().toISOString()
+        ]);
+        settingsStmt.finalize();
+        
+        // Reset bikes to basic inventory
+        const defaultBikes = [
+          { type: 'adulto', size: 'S', suspension: 'front-only', count: 3 },
+          { type: 'adulto', size: 'M', suspension: 'front-only', count: 5 },
+          { type: 'adulto', size: 'L', suspension: 'front-only', count: 4 },
+          { type: 'adulto', size: 'XL', suspension: 'front-only', count: 2 },
+          { type: 'adulto', size: 'M', suspension: 'full-suspension', count: 2 },
+          { type: 'adulto', size: 'L', suspension: 'full-suspension', count: 2 },
+          { type: 'bambino', size: 'S', suspension: 'front-only', count: 4 },
+          { type: 'bambino', size: 'M', suspension: 'front-only', count: 3 },
+          { type: 'carrello-porta-bimbi', size: '', suspension: '', count: 2 },
+          { type: 'trailer', size: '', suspension: '', count: 3 }
+        ];
+        
+        const bikeStmt = db.prepare(`
+          INSERT OR REPLACE INTO bikes 
+          (id, type, size, suspension, count)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        
+        defaultBikes.forEach((bike, index) => {
+          bikeStmt.run([
+            index + 1,
+            bike.type,
+            bike.size,
+            bike.suspension,
+            bike.count
+          ]);
+        });
+        bikeStmt.finalize();
+        
+        // Reset server config to defaults
+        const serverConfigStmt = db.prepare(`
+          INSERT OR REPLACE INTO server_config 
+          (id, server_port, auto_backup, backup_interval_hours, max_backup_files, debug_mode, updated_at)
+          VALUES (1, 9273, 1, 24, 30, 0, ?)
+        `);
+        serverConfigStmt.run([new Date().toISOString()]);
+        serverConfigStmt.finalize();
+        
+        // Log successful reset
+        addLog('info', 'Complete application reset successful - all data cleared and defaults restored');
+        logger.info('SYSTEM', 'Complete application reset completed', {
+          timestamp: new Date().toISOString(),
+          tablesCleared: clearTables.length,
+          defaultsRestored: true
+        });
+        
+        res.json({ 
+          success: true, 
+          message: 'Complete application reset successful',
+          cleared: {
+            bookings: true,
+            individual_bikes: true,
+            fixed_costs: true,
+            analytics: true
+          },
+          restored: {
+            settings: true,
+            default_bikes: defaultBikes.length,
+            server_config: true
+          },
+          resetDate: new Date().toISOString()
+        });
+
+      } catch (innerError) {
+        addLog('error', 'Transaction failed during reset', innerError.message);
+        logger.error('SYSTEM', 'Reset transaction failed', { error: innerError.message });
+        res.status(500).json({ 
+          error: 'Failed to reset application', 
+          details: innerError.message 
+        });
+      }
+    });
+
+  } catch (error) {
+    addLog('error', 'Failed to reset application', error.message);
+    logger.error('SYSTEM', 'Application reset failed', { error: error.message });
+    res.status(500).json({ 
+      error: 'Failed to reset application to initial state', 
       details: error.message 
     });
   }
@@ -1914,10 +2125,67 @@ app.delete('/api/individual-bikes/:id', (req, res) => {
   });
 });
 
+// Database optimizer initialization
+let dbOptimizer = null;
+let maintenanceScheduler = null;
+
+async function initializeDatabaseOptimizer() {
+  try {
+    console.log('🔧 Initializing database optimizer for shop performance...');
+    
+    dbOptimizer = new DatabaseOptimizer(dbPath);
+    await dbOptimizer.optimize();
+    
+    // Start maintenance scheduler
+    maintenanceScheduler = new MaintenanceScheduler(dbOptimizer);
+    maintenanceScheduler.start();
+    
+    console.log('✅ Database optimizer initialized successfully');
+    logger.info('DATABASE', 'Database optimizer initialized', {
+      optimizerActive: true,
+      maintenanceScheduled: true
+    });
+  } catch (error) {
+    console.warn('⚠️ Database optimizer initialization failed:', error.message);
+    logger.warn('DATABASE', 'Database optimizer initialization failed', {
+      error: error.message,
+      fallbackMode: true
+    });
+  }
+}
+
+// Graceful shutdown handler
+process.on('SIGTERM', () => {
+  console.log('📦 Shutting down server gracefully...');
+  if (dbOptimizer) {
+    dbOptimizer.close();
+  }
+  if (db) {
+    db.close();
+  }
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('📦 Shutting down server gracefully...');
+  if (dbOptimizer) {
+    dbOptimizer.close();
+  }
+  if (db) {
+    db.close();
+  }
+  process.exit(0);
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Rabbi E-Bike Server running on port ${PORT}`);
   console.log(`📂 Database: ${dbPath}`);
   console.log(`🌐 API: http://localhost:${PORT}/api`);
+  console.log(`🏪 Optimized for local shop usage`);
+  
+  // Start memory cleanup for shop computers
+  scheduleMemoryCleanup();
+  console.log('🧹 Memory cleanup scheduled');
   
   // Log server startup with advanced logging
   logger.info('SERVER', 'Rabbi E-Bike Server started successfully', {
@@ -1931,6 +2199,12 @@ app.listen(PORT, () => {
     processId: process.pid,
     workingDirectory: process.cwd(),
     memoryUsage: process.memoryUsage(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    optimizations: {
+      databaseOptimizer: !!dbOptimizer,
+      maintenanceScheduler: !!maintenanceScheduler,
+      shopMonitoring: true,
+      memoryCleanup: true
+    }
   });
 });

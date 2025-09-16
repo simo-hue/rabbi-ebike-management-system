@@ -98,7 +98,7 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
     if (!newCost.name || newCost.amount <= 0) {
       toast({
         title: "Errore",
-        description: "Nome e importo sono obbligatori",
+        description: "Nome è obbligatorio e l'importo deve essere maggiore di 0",
         variant: "destructive"
       });
       return;
@@ -456,8 +456,9 @@ export const FixedCostsManager = ({ onClose }: FixedCostsManagerProps) => {
                   id="costAmount"
                   type="number"
                   step="0.01"
-                  min="0"
-                  value={newCost.amount}
+                  min="0.01"
+                  placeholder="es. 100.00"
+                  value={newCost.amount || ''}
                   onChange={(e) => setNewCost({ ...newCost, amount: parseFloat(e.target.value) || 0 })}
                 />
               </div>

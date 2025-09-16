@@ -1146,20 +1146,8 @@ export const Dashboard = () => {
     // Group garage bikes by type/size/suspension/hasTrailerHook and count available
     const bikeGroups: Record<string, BikeDetails> = {};
     
-    // Add settings bikes
-    settings.bikes.filter(bike => bike.isActive !== false).forEach(bike => {
-      const key = `${bike.type}-${bike.size || 'none'}-${bike.suspension || 'none'}-${bike.hasTrailerHook || false}`;
-      if (!bikeGroups[key]) {
-        bikeGroups[key] = {
-          type: bike.type,
-          size: bike.size,
-          suspension: bike.suspension,
-          hasTrailerHook: bike.hasTrailerHook,
-          count: 0
-        };
-      }
-      bikeGroups[key].count++;
-    });
+    // Use only individual bikes from garage - settings.bikes are just defaults
+    // settings.bikes are no longer used for counting, only individualBikes
 
     // Add individual bikes (mainly for trailers and specific bikes)
     individualBikes.filter(bike => bike.isActive).forEach(bike => {
@@ -1306,17 +1294,33 @@ export const Dashboard = () => {
                   onSelect={(date) => date && setSelectedDate(date)}
                   className="rounded-md border pointer-events-auto"
                   locale={it}
+                  modifiers={{
+                    today: new Date(),
+                    selected: selectedDate
+                  }}
+                  modifiersStyles={{
+                    today: { 
+                      backgroundColor: 'rgb(34 197 94)', // bg-green-500 - verde intenso per oggi
+                      color: 'white',
+                      fontWeight: 'bold'
+                    },
+                    selected: selectedDate && format(selectedDate, 'yyyy-MM-dd') !== format(new Date(), 'yyyy-MM-dd') ? {
+                      backgroundColor: 'rgb(34 197 94 / 0.3)', // bg-green-500/30 - verde trasparente per giorno selezionato diverso da oggi
+                      color: 'rgb(22 163 74)', // text-green-600
+                      fontWeight: '500'
+                    } : undefined
+                  }}
                 />
                 
                 {/* Quick Stats */}
                 <div className="mt-4 space-y-2">
                   {(() => {
                     const availableBikes = getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type !== "trailer").reduce((sum, bike) => sum + bike.count, 0);
-                    const totalBikes = settings.bikes.filter(bike => bike.isActive && bike.type !== "trailer").length;
+                    const totalBikes = individualBikes.filter(bike => bike.isActive && bike.type !== "trailer").length;
                     const bikePercentage = totalBikes > 0 ? availableBikes / totalBikes : 0;
                     
                     const availableTrailers = getAvailableBikes(selectedDate, "09:00", "19:00", "hourly").filter(bike => bike.type === "trailer").reduce((sum, bike) => sum + bike.count, 0);
-                    const totalTrailers = settings.bikes.filter(bike => bike.isActive && bike.type === "trailer").length;
+                    const totalTrailers = individualBikes.filter(bike => bike.isActive && bike.type === "trailer").length;
                     const trailerPercentage = totalTrailers > 0 ? availableTrailers / totalTrailers : 0;
                     
                     const getBadgeColor = (available: number, percentage: number) => {

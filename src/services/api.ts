@@ -1,4 +1,5 @@
 import type { Booking, ShopSettings } from "../components/Dashboard";
+import { apiCache, storage } from "@/utils/performance";
 
 interface ServerConfigUpdate {
   serverPort?: number;
@@ -41,7 +42,15 @@ export interface ApiConfig {
 class ApiService {
   private config: ApiConfig = {
     baseUrl: 'http://localhost:9273/api',
-    timeout: 10000
+    timeout: 8000 // Reduced for faster shop experience
+  };
+  
+  // Shop-specific cache keys
+  private readonly CACHE_KEYS = {
+    SETTINGS: 'rabbi-settings',
+    BIKES: 'rabbi-bikes',
+    FIXED_COSTS: 'rabbi-fixed-costs',
+    INDIVIDUAL_BIKES: 'rabbi-individual-bikes'
   };
 
   public updateConfig(newConfig: Partial<ApiConfig>) {
@@ -50,6 +59,91 @@ class ApiService {
 
   public getConfig(): ApiConfig {
     return { ...this.config };
+  }
+
+  // Cache management for shop operations
+  public clearCache() {
+    apiCache.invalidate();
+    Object.values(this.CACHE_KEYS).forEach(key => storage.remove(key));
+    console.log('🧹 API cache cleared for fresh shop data');
+  }
+
+  public preloadShopData() {
+    // Preload critical shop data for immediate dashboard load
+    Promise.allSettled([
+      this.getSettings(),
+      this.getBookings(),
+      this.getIndividualBikes(),
+      this.getFixedCosts()
+    ]).then(() => {
+      console.log('✅ Shop data preloaded for optimal performance');
+    });
+  }
+
+  // Cache helper methods for shop performance
+  private getCacheKey(endpoint: string, params?: Record<string, string>): string {
+    const paramString = params ? new URLSearchParams(params).toString() : '';
+    return `rabbi-api-${endpoint.replace(/\//g, '-')}${paramString ? '-' + paramString : ''}`;
+  }
+
+  private async cachedFetch<T>(
+    endpoint: string, 
+    options: RequestInit = {}, 
+    cacheTime = 30000, // 30 seconds default for shop data
+    useCache = true
+  ): Promise<T> {
+    const cacheKey = this.getCacheKey(endpoint);
+    
+    // For GET requests, try cache first
+    if (useCache && (!options.method || options.method === 'GET')) {
+      return apiCache.get(cacheKey, () => this.fetch(endpoint, options), cacheTime);
+    }
+    
+    // For mutations, invalidate related cache and fetch directly
+    const result = await this.fetch(endpoint, options);
+    
+    // Invalidate cache for mutations
+    if (options.method && options.method !== 'GET') {
+      this.invalidateRelatedCache(endpoint);
+    }
+    
+    return result;
+  }
+
+  private invalidateRelatedCache(endpoint: string) {
+    // Smart cache invalidation based on endpoint
+    if (endpoint.includes('bookings')) {
+      apiCache.invalidate('bookings');
+      apiCache.invalidate('analytics');
+    } else if (endpoint.includes('settings')) {
+      apiCache.invalidate('settings');
+      storage.remove(this.CACHE_KEYS.SETTINGS);
+    } else if (endpoint.includes('individual-bikes')) {
+      apiCache.invalidate('individual-bikes');
+      storage.remove(this.CACHE_KEYS.INDIVIDUAL_BIKES);
+    } else if (endpoint.includes('fixed-costs')) {
+      apiCache.invalidate('fixed-costs');
+      storage.remove(this.CACHE_KEYS.FIXED_COSTS);
+      apiCache.invalidate('analytics');
+    }
+  }
+
+  // Offline fallback for shop resilience
+  private async getWithOfflineFallback<T>(endpoint: string, cacheKey: string): Promise<T> {
+    try {
+      const result = await this.cachedFetch<T>(endpoint);
+      // Store successful result for offline access
+      storage.set(cacheKey, result, 24 * 60 * 60 * 1000); // 24h offline cache
+      return result;
+    } catch (error) {
+      console.warn(`API request failed, trying offline fallback: ${endpoint}`);
+      const offlineData = storage.get(cacheKey);
+      if (offlineData) {
+        console.log('Using offline data for shop continuity');
+        return offlineData;
+      }
+      throw error;
+    }
   }
 
   private async fetch(endpoint: string, options: RequestInit = {}) {
@@ -83,44 +177,44 @@ class ApiService {
 
   // Health check
   async healthCheck() {
-    return this.fetch('/health');
+    return this.cachedFetch('/health', {}, 5000); // 5 second cache for health
   }
 
-  // Settings
+  // Settings - critical for shop operations
   async getSettings() {
-    return this.fetch('/settings');
+    return this.getWithOfflineFallback('/settings', this.CACHE_KEYS.SETTINGS);
   }
 
   async updateSettings(settings: Partial<ShopSettings>) {
-    return this.fetch('/settings', {
+    return this.cachedFetch('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
-    });
+    }, 0, false);
   }
 
-  // Bookings
+  // Bookings - frequently accessed in shops
   async getBookings() {
-    return this.fetch('/bookings');
+    return this.cachedFetch('/bookings', {}, 15000); // 15 second cache for bookings
   }
 
   async createBooking(booking: Omit<Booking, 'id' | 'totalPrice'>) {
-    return this.fetch('/bookings', {
+    return this.cachedFetch('/bookings', {
       method: 'POST',
       body: JSON.stringify(booking),
-    });
+    }, 0, false);
   }
 
   async updateBooking(id: string, booking: Partial<Booking>) {
-    return this.fetch(`/bookings/${id}`, {
+    return this.cachedFetch(`/bookings/${id}`, {
       method: 'PUT',
       body: JSON.stringify(booking),
-    });
+    }, 0, false);
   }
 
   async deleteBooking(id: string) {
-    return this.fetch(`/bookings/${id}`, {
+    return this.cachedFetch(`/bookings/${id}`, {
       method: 'DELETE',
-    });
+    }, 0, false);
   }
 
   // Server configuration
@@ -155,38 +249,38 @@ class ApiService {
     return this.fetch('/monitoring/logs');
   }
 
-  // Fixed costs management
+  // Fixed costs management - important for shop finances
   async getFixedCosts() {
-    return this.fetch('/fixed-costs');
+    return this.getWithOfflineFallback('/fixed-costs', this.CACHE_KEYS.FIXED_COSTS);
   }
 
   async createFixedCost(cost: Omit<FixedCost, 'id'>) {
-    return this.fetch('/fixed-costs', {
+    return this.cachedFetch('/fixed-costs', {
       method: 'POST',
       body: JSON.stringify(cost),
-    });
+    }, 0, false);
   }
 
   async updateFixedCost(id: string, cost: Partial<FixedCost>) {
-    return this.fetch(`/fixed-costs/${id}`, {
+    return this.cachedFetch(`/fixed-costs/${id}`, {
       method: 'PUT',
       body: JSON.stringify(cost),
-    });
+    }, 0, false);
   }
 
   async deleteFixedCost(id: string) {
-    return this.fetch(`/fixed-costs/${id}`, {
+    return this.cachedFetch(`/fixed-costs/${id}`, {
       method: 'DELETE',
-    });
+    }, 0, false);
   }
 
-  // Analytics
+  // Analytics - cache for better shop dashboard performance
   async getBikePerformance(period = 'month') {
-    return this.fetch(`/analytics/bike-performance?period=${period}`);
+    return this.cachedFetch(`/analytics/bike-performance?period=${period}`, {}, 60000); // 1 minute cache
   }
 
   async getRevenueBreakdown(period = 'month') {
-    return this.fetch(`/analytics/revenue-breakdown?period=${period}`);
+    return this.cachedFetch(`/analytics/revenue-breakdown?period=${period}`, {}, 60000); // 1 minute cache
   }
 
   // Log management
@@ -208,7 +302,7 @@ class ApiService {
   }
 
   async downloadLogFile(filename: string) {
-    const response = await fetch(`${this.baseUrl}/logs/download/${filename}`, {
+    const response = await fetch(`${this.config.baseUrl}/logs/download/${filename}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -221,9 +315,9 @@ class ApiService {
     return response.blob();
   }
 
-  // Individual Bikes management
+  // Individual Bikes management - critical for garage operations
   async getIndividualBikes() {
-    return this.fetch('/individual-bikes');
+    return this.getWithOfflineFallback('/individual-bikes', this.CACHE_KEYS.INDIVIDUAL_BIKES);
   }
 
   async createIndividualBike(bike: any) {
@@ -257,6 +351,27 @@ class ApiService {
       body: JSON.stringify(data),
     });
   }
+
+  // Complete application reset
+  async resetApplication() {
+    return this.cachedFetch('/data/reset', {
+      method: 'POST',
+    }, 0, false);
+  }
 }
 
 export const apiService = new ApiService();
+
+// Initialize shop optimizations
+if (typeof window !== 'undefined') {
+  // Preload critical shop data after a short delay
+  setTimeout(() => {
+    apiService.preloadShopData();
+  }, 1000);
+  
+  // Clear cache on page refresh for fresh data
+  window.addEventListener('beforeunload', () => {
+    // Only clear volatile cache, keep offline fallbacks
+    apiCache.invalidate();
+  });
+}

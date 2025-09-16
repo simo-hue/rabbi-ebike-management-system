@@ -326,6 +326,78 @@ export const DevPanel = () => {
     }
   };
 
+  const handleResetApplication = async () => {
+    // Prima conferma
+    const firstConfirm = window.confirm(
+      "⚠️ ATTENZIONE: Reset Completo Applicazione\n\n" +
+      "Questa operazione:\n" +
+      "• Eliminerà TUTTE le prenotazioni\n" +
+      "• Rimuoverà tutte le bici dal garage\n" +
+      "• Cancellerà tutti i costi fissi\n" +
+      "• Resetterà le statistiche\n" +
+      "• Ripristinerà le impostazioni di default\n\n" +
+      "Vuoi continuare?"
+    );
+
+    if (!firstConfirm) return;
+
+    // Seconda conferma più forte
+    const secondConfirm = window.confirm(
+      "🚨 CONFERMA FINALE\n\n" +
+      "Stai per CANCELLARE COMPLETAMENTE tutti i dati!\n" +
+      "Verrà creato un backup automatico di sicurezza.\n\n" +
+      "Sei ASSOLUTAMENTE SICURO di voler procedere?\n" +
+      "Questa operazione NON è reversibile!"
+    );
+
+    if (!secondConfirm) return;
+
+    try {
+      toast({
+        title: "Reset in corso...",
+        description: "Creazione backup di sicurezza e reset dell'applicazione in corso."
+      });
+
+      const result = await apiService.resetApplication();
+      
+      toast({
+        title: "Reset Completato!",
+        description: "L'applicazione è stata resettata allo stato iniziale. Backup di sicurezza creato automaticamente."
+      });
+
+      // Refresh all data after reset
+      setTimeout(() => {
+        refetchStats();
+        refetchConfig();
+        refetchPerf();
+        
+        // Clear local cache
+        if (apiService.clearCache) {
+          apiService.clearCache();
+        }
+        
+        // Suggest page reload
+        const shouldReload = window.confirm(
+          'Reset completato con successo!\n\n' +
+          'Per vedere tutte le modifiche, è consigliabile ricaricare la pagina.\n' +
+          'Ricaricare ora?'
+        );
+        
+        if (shouldReload) {
+          window.location.reload();
+        }
+      }, 1500);
+
+    } catch (error) {
+      console.error('Reset error:', error);
+      toast({
+        title: "Errore Reset",
+        description: error.message || "Impossibile completare il reset dell'applicazione.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -1315,6 +1387,14 @@ export const DevPanel = () => {
                 >
                   <RefreshCwIcon className="w-4 h-4 mr-2" />
                   Aggiorna Tutto
+                </Button>
+                
+                <Button
+                  variant="destructive"
+                  onClick={handleResetApplication}
+                >
+                  <TrashIcon className="w-4 h-4 mr-2" />
+                  Reset Completo
                 </Button>
               </div>
             </CardContent>
