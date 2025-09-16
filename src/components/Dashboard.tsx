@@ -718,11 +718,11 @@ export type ShopSettings = {
 
 const defaultSettings: ShopSettings = {
   totalBikes: [
-    { type: "adulto", size: "S", suspension: "front-only", count: 2 },
-    { type: "adulto", size: "M", suspension: "front-only", count: 3 },
-    { type: "adulto", size: "L", suspension: "front-only", count: 2 },
+    { type: "adulto", size: "S", suspension: "front", count: 2 },
+    { type: "adulto", size: "M", suspension: "front", count: 3 },
+    { type: "adulto", size: "L", suspension: "front", count: 2 },
     { type: "adulto", size: "M", suspension: "full-suspension", count: 2 },
-    { type: "bambino", size: "S", suspension: "front-only", count: 1 },
+    { type: "bambino", size: "S", suspension: "front", count: 1 },
   ],
   bikes: [
     {
@@ -752,7 +752,7 @@ const defaultSettings: ShopSettings = {
       model: "Verve+ 2",
       type: "adulto",
       size: "L",
-      suspension: "front-only",
+      suspension: "front",
       hasTrailerHook: false,
       description: "E-bike urbana perfetta per giri in città",
       minHeight: 175,
@@ -772,7 +772,7 @@ const defaultSettings: ShopSettings = {
       model: "Turbo Levo SL",
       type: "bambino",
       size: "S",
-      suspension: "front-only",
+      suspension: "front",
       description: "E-bike per bambini sicura e divertente",
       minHeight: 120,
       maxHeight: 150,

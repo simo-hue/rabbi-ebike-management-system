@@ -23,7 +23,7 @@ export const BikeSelector = ({ availableBikes, selectedBikes, onSelectionChange 
   const getSuspensionLabel = (suspension: string) => {
     switch (suspension) {
       case "full-suspension": return "Full Suspension";
-      case "front-only": return "Solo Davanti";
+      case "front": return "Front";
       default: return suspension;
     }
   };

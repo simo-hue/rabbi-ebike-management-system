@@ -49,7 +49,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     model: "",
     type: "adulto",
     size: "M",
-    suspension: "front-only",
+    suspension: "front",
     hasTrailerHook: false,
     description: "",
     minHeight: 150,
@@ -124,7 +124,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
         model: "",
         type: "adulto",
         size: "M",
-        suspension: "front-only",
+        suspension: "front",
         hasTrailerHook: false,
         description: "",
         minHeight: 150,
@@ -802,7 +802,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="front-only">Solo Davanti</SelectItem>
+                      <SelectItem value="front">Front</SelectItem>
                       <SelectItem value="full-suspension">Full Suspension</SelectItem>
                     </SelectContent>
                   </Select>
@@ -968,35 +968,40 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                         <SelectContent>
                           <SelectItem value="adulto">Adulto</SelectItem>
                           <SelectItem value="bambino">Bambino</SelectItem>
+                          <SelectItem value="trailer">Carrello</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Taglia</Label>
-                      <Select disabled value={selectedBike.size}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="S">S</SelectItem>
-                          <SelectItem value="M">M</SelectItem>
-                          <SelectItem value="L">L</SelectItem>
-                          <SelectItem value="XL">XL</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sospensioni</Label>
-                      <Select disabled value={selectedBike.suspension}>
-                        <SelectTrigger>
-                          <SelectValue className="capitalize" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="front-only">Solo Davanti</SelectItem>
-                          <SelectItem value="full-suspension">Full Suspension</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {selectedBike.type !== 'trailer' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Taglia</Label>
+                          <Select disabled value={selectedBike.size || ""}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="S">S</SelectItem>
+                              <SelectItem value="M">M</SelectItem>
+                              <SelectItem value="L">L</SelectItem>
+                              <SelectItem value="XL">XL</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Sospensioni</Label>
+                          <Select disabled value={selectedBike.suspension || ""}>
+                            <SelectTrigger>
+                              <SelectValue className="capitalize" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="front">Front</SelectItem>
+                              <SelectItem value="full-suspension">Full Suspension</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -1004,16 +1009,18 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     <Textarea value={selectedBike.description} readOnly rows={3} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Altezza Minima (cm)</Label>
-                      <Input value={selectedBike.minHeight.toString()} readOnly type="number" />
+                  {selectedBike.type !== 'trailer' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Altezza Minima (cm)</Label>
+                        <Input value={selectedBike.minHeight?.toString() || ""} readOnly type="number" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Altezza Massima (cm)</Label>
+                        <Input value={selectedBike.maxHeight?.toString() || ""} readOnly type="number" />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Altezza Massima (cm)</Label>
-                      <Input value={selectedBike.maxHeight.toString()} readOnly type="number" />
-                    </div>
-                  </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1031,7 +1038,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
 
                   <div className="flex items-center space-x-2">
                     <Switch checked={selectedBike.isActive} disabled />
-                    <Label>Bicicletta attiva</Label>
+                    <Label>{selectedBike.type === 'trailer' ? 'Carrello attivo' : 'Bicicletta attiva'}</Label>
                   </div>
                 </div>
               </TabsContent>

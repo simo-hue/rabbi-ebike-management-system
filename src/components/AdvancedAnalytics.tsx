@@ -57,6 +57,8 @@ interface BikePerformance {
   estimated_revenue: number;
   avg_revenue_per_booking: number;
   total_hours: number;
+  total_purchase_cost: number;
+  total_maintenance_cost: number;
 }
 
 interface FixedCost {
@@ -87,6 +89,9 @@ interface RevenueBreakdown {
   summary: {
     totalRevenue: number;
     totalFixedCosts: number;
+    totalVehiclePurchaseCost: number;
+    totalVehicleMaintenanceCost: number;
+    totalCosts: number;
     netProfit: number;
     profitMargin: number;
   };
@@ -171,6 +176,8 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
         prenotazioni: bike.total_bookings,
         unitaNolegiate: bike.total_units_rented,
         ricavoStimato: bike.estimated_revenue,
+        costoAcquisto: bike.total_purchase_cost,
+        costoManutenzione: bike.total_maintenance_cost,
         oreTotali: bike.total_hours,
         tassoUtilizzo: `${calculateUtilizationRate(bike).toFixed(1)}%`
       })),
@@ -187,8 +194,103 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
     URL.revokeObjectURL(url);
 
     toast({
-      title: "Report Esportato",
-      description: "Report dettagliato scaricato con successo"
+      title: "Report JSON Esportato",
+      description: "Report dettagliato JSON scaricato con successo"
+    });
+  };
+
+  const exportCSVReport = () => {
+    if (!revenueBreakdown) return;
+
+    // Funzione helper per convertire oggetti in CSV
+    const convertToCSV = (data: any[], headers: string[]) => {
+      const csvHeaders = headers.join(',');
+      const csvRows = data.map(row => 
+        headers.map(header => {
+          const value = row[header];
+          return typeof value === 'string' && value.includes(',') 
+            ? `"${value}"` 
+            : value;
+        }).join(',')
+      );
+      return [csvHeaders, ...csvRows].join('\n');
+    };
+
+    // 1. Performance Bici CSV
+    const bikePerformanceData = bikePerformance.map(bike => ({
+      Bicicletta: getBikeDisplayName(bike),
+      Prenotazioni: bike.total_bookings,
+      'Unità Noleggiate': bike.total_units_rented,
+      'Ore Totali': bike.total_hours,
+      'Ricavo Stimato (€)': bike.estimated_revenue.toFixed(2),
+      'Costo Acquisto (€)': bike.total_purchase_cost.toFixed(2),
+      'Costo Manutenzione (€)': bike.total_maintenance_cost.toFixed(2),
+      '€/Prenotazione': bike.avg_revenue_per_booking.toFixed(2),
+      'Utilizzo %': calculateUtilizationRate(bike).toFixed(1)
+    }));
+
+    // 2. Riepilogo Finanziario CSV
+    const summaryData = [{
+      'Ricavi Totali (€)': revenueBreakdown.summary.totalRevenue.toFixed(2),
+      'Costi Fissi (€)': revenueBreakdown.summary.totalFixedCosts.toFixed(2),
+      'Costi Acquisto Bici (€)': revenueBreakdown.summary.totalVehiclePurchaseCost.toFixed(2),
+      'Costi Manutenzione (€)': revenueBreakdown.summary.totalVehicleMaintenanceCost.toFixed(2),
+      'Costi Totali (€)': revenueBreakdown.summary.totalCosts.toFixed(2),
+      'Profitto Netto (€)': revenueBreakdown.summary.netProfit.toFixed(2),
+      'Margine Profitto %': revenueBreakdown.summary.profitMargin.toFixed(1)
+    }];
+
+    // 3. Costi Fissi CSV
+    const fixedCostsData = revenueBreakdown.fixedCosts.map(cost => ({
+      Nome: cost.name,
+      Descrizione: cost.description,
+      'Categoria': cost.category,
+      'Frequenza': cost.frequency,
+      'Importo (€)': cost.amount.toFixed(2),
+      'Costo Annuo (€)': cost.annual_cost.toFixed(2)
+    }));
+
+    // 4. Ricavi per Categoria CSV
+    const categoriesData = revenueBreakdown.byCategory.map(cat => ({
+      'Categoria': cat.category === "hourly" ? "Orario" : 
+                  cat.category === "half-day" ? "Mezza Giornata" : "Giornata Intera",
+      'Prenotazioni': cat.bookings,
+      'Ricavo (€)': cat.revenue.toFixed(2),
+      'Valore Medio Prenotazione (€)': cat.avg_booking_value.toFixed(2)
+    }));
+
+    // Creazione file CSV multiplo
+    let csvContent = '';
+    csvContent += `REPORT ANALYTICS - PERIODO: ${getPeriodLabel(selectedPeriod)}\n`;
+    csvContent += `Data Generazione: ${new Date().toLocaleDateString('it-IT')}\n\n`;
+    
+    csvContent += 'RIEPILOGO FINANZIARIO\n';
+    csvContent += convertToCSV(summaryData, Object.keys(summaryData[0]));
+    csvContent += '\n\n';
+    
+    csvContent += 'PERFORMANCE BICICLETTE\n';
+    csvContent += convertToCSV(bikePerformanceData, Object.keys(bikePerformanceData[0]));
+    csvContent += '\n\n';
+    
+    csvContent += 'RICAVI PER CATEGORIA\n';
+    csvContent += convertToCSV(categoriesData, Object.keys(categoriesData[0]));
+    csvContent += '\n\n';
+    
+    csvContent += 'COSTI FISSI\n';
+    csvContent += convertToCSV(fixedCostsData, Object.keys(fixedCostsData[0]));
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-${selectedPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Report CSV Esportato",
+      description: "Report dettagliato CSV scaricato con successo"
     });
   };
 
@@ -208,7 +310,11 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={exportDetailedReport} disabled={!revenueBreakdown}>
               <DownloadIcon className="w-4 h-4 mr-2" />
-              Esporta Report
+              Esporta JSON
+            </Button>
+            <Button variant="outline" onClick={exportCSVReport} disabled={!revenueBreakdown}>
+              <DownloadIcon className="w-4 h-4 mr-2" />
+              Esporta CSV
             </Button>
             <Button variant="outline" onClick={onClose}>
               Chiudi
@@ -282,13 +388,13 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
 
                         <Card>
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Costi Fissi</CardTitle>
+                            <CardTitle className="text-sm font-medium">Costi Totali</CardTitle>
                             <AlertTriangleIcon className="h-4 w-4 text-muted-foreground" />
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-red-600">€{revenueBreakdown.summary.totalFixedCosts.toFixed(2)}</div>
+                            <div className="text-2xl font-bold text-red-600">€{revenueBreakdown.summary.totalCosts.toFixed(2)}</div>
                             <p className="text-xs text-muted-foreground">
-                              Annualizzati
+                              Fissi + Acquisto + Manutenzione
                             </p>
                           </CardContent>
                         </Card>
@@ -413,6 +519,8 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
                             <TableHead className="text-right">Unità Noleggiate</TableHead>
                             <TableHead className="text-right">Ore Totali</TableHead>
                             <TableHead className="text-right">Ricavo Stimato</TableHead>
+                            <TableHead className="text-right">Costo Acquisto</TableHead>
+                            <TableHead className="text-right">Costo Manutenzione</TableHead>
                             <TableHead className="text-right">€/Prenotazione</TableHead>
                             <TableHead className="text-right">Utilizzo %</TableHead>
                           </TableRow>
@@ -438,6 +546,8 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
                                     €{bike.estimated_revenue.toFixed(2)}
                                   </span>
                                 </TableCell>
+                                <TableCell className="text-right text-red-600">€{bike.total_purchase_cost.toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-orange-600">€{bike.total_maintenance_cost.toFixed(2)}</TableCell>
                                 <TableCell className="text-right">€{bike.avg_revenue_per_booking.toFixed(2)}</TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center gap-2">
@@ -567,6 +677,14 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
                               <span>Costi Fissi Annui:</span>
                               <span className="font-bold text-red-600">-€{revenueBreakdown.summary.totalFixedCosts.toFixed(2)}</span>
                             </div>
+                            <div className="flex justify-between items-center">
+                              <span>Costi Acquisto Bici:</span>
+                              <span className="font-bold text-red-600">-€{revenueBreakdown.summary.totalVehiclePurchaseCost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span>Costi Manutenzione:</span>
+                              <span className="font-bold text-orange-600">-€{revenueBreakdown.summary.totalVehicleMaintenanceCost.toFixed(2)}</span>
+                            </div>
                             <hr />
                             <div className="flex justify-between items-center text-lg">
                               <span className="font-medium">Profitto Netto:</span>
@@ -628,27 +746,27 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
                       <Card>
                         <CardHeader>
                           <CardTitle>Analisi Break-Even</CardTitle>
-                          <CardDescription>Quanto fatturato serve per coprire i costi fissi</CardDescription>
+                          <CardDescription>Quanto fatturato serve per coprire tutti i costi (fissi + acquisto + manutenzione)</CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">Break-Even Mensile</Label>
                               <div className="text-2xl font-bold text-orange-600">
-                                €{(revenueBreakdown.summary.totalFixedCosts / 12).toFixed(2)}
+                                €{(revenueBreakdown.summary.totalCosts / 12).toFixed(2)}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Fatturato minimo mensile per coprire i costi
+                                Fatturato minimo mensile per coprire tutti i costi
                               </p>
                             </div>
                             
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">Break-Even Giornaliero</Label>
                               <div className="text-2xl font-bold text-orange-600">
-                                €{(revenueBreakdown.summary.totalFixedCosts / 365).toFixed(2)}
+                                €{(revenueBreakdown.summary.totalCosts / 365).toFixed(2)}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Fatturato minimo giornaliero
+                                Fatturato minimo giornaliero (tutti i costi)
                               </p>
                             </div>
                             
@@ -659,7 +777,7 @@ export const AdvancedAnalytics = ({ bookings, settings, onClose }: AdvancedAnaly
                               </div>
                               <p className="text-xs text-muted-foreground">
                                 {revenueBreakdown.summary.netProfit >= 0 
-                                  ? 'I ricavi superano i costi fissi' 
+                                  ? 'I ricavi superano tutti i costi' 
                                   : `Mancano €${Math.abs(revenueBreakdown.summary.netProfit).toFixed(2)}`
                                 }
                               </p>

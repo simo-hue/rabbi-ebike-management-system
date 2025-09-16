@@ -96,7 +96,7 @@ const validateBikeSuspension = (suspension, bikeType) => {
   if (bikeType === 'trailer' || bikeType === 'carrello-porta-bimbi') {
     return !suspension || suspension === null || suspension === undefined; // Should be empty for trailers
   }
-  const validSuspensions = ['full-suspension', 'front-only'];
+  const validSuspensions = ['full-suspension', 'front'];
   return validSuspensions.includes(suspension);
 };
 
@@ -466,11 +466,11 @@ db.serialize(() => {
   db.get("SELECT COUNT(*) as count FROM bikes", (err, row) => {
     if (row.count === 0) {
       const defaultBikes = [
-        ["adulto", "S", "front-only", 2],
-        ["adulto", "M", "front-only", 3],
-        ["adulto", "L", "front-only", 2],
+        ["adulto", "S", "front", 2],
+        ["adulto", "M", "front", 3],
+        ["adulto", "L", "front", 2],
         ["adulto", "M", "full-suspension", 2],
-        ["bambino", "S", "front-only", 1]
+        ["bambino", "S", "front", 1]
       ];
       
       defaultBikes.forEach(bike => {
@@ -793,7 +793,25 @@ app.get('/api/analytics/bike-performance', (req, res) => {
           WHEN b.category = 'half-day' THEN 4 * bb.bike_count
           ELSE (CAST(substr(b.end_time, 1, 2) AS INTEGER) - CAST(substr(b.start_time, 1, 2) AS INTEGER)) * bb.bike_count
         END
-      ) as total_hours
+      ) as total_hours,
+      -- Calcolo costi di acquisto aggregati per tipologia
+      (SELECT 
+        COALESCE(AVG(COALESCE(ib.purchase_price, 0)), 0) * SUM(bb.bike_count)
+      FROM individual_bikes ib 
+      WHERE ib.type = bb.bike_type 
+        AND ib.size = bb.bike_size 
+        AND ib.suspension = bb.bike_suspension
+        AND ib.is_active = 1
+      ) as total_purchase_cost,
+      -- Calcolo costi di manutenzione aggregati per tipologia
+      (SELECT 
+        COALESCE(AVG(COALESCE(ib.total_maintenance_cost, 0)), 0) * SUM(bb.bike_count)
+      FROM individual_bikes ib 
+      WHERE ib.type = bb.bike_type 
+        AND ib.size = bb.bike_size 
+        AND ib.suspension = bb.bike_suspension
+        AND ib.is_active = 1
+      ) as total_maintenance_cost
     FROM booking_bikes bb
     JOIN bookings b ON bb.booking_id = b.id
     ${dateFilter}
@@ -890,15 +908,34 @@ app.get('/api/analytics/revenue-breakdown', (req, res) => {
         const totalRevenue = results.byCategory.reduce((sum, cat) => sum + cat.revenue, 0);
         const totalFixedCosts = results.fixedCosts.reduce((sum, cost) => sum + cost.annual_cost, 0);
         
-        results.summary = {
-          totalRevenue,
-          totalFixedCosts,
-          netProfit: totalRevenue - totalFixedCosts,
-          profitMargin: totalRevenue > 0 ? ((totalRevenue - totalFixedCosts) / totalRevenue) * 100 : 0
-        };
-        
-        addLog('info', `Revenue breakdown analytics retrieved for period: ${period}`);
-        res.json(results);
+        // Calcolo costi di acquisto e manutenzione totali delle bici dal garage
+        db.all(`
+          SELECT 
+            COALESCE(SUM(purchase_price), 0) as total_vehicle_purchase_cost,
+            COALESCE(SUM(total_maintenance_cost), 0) as total_vehicle_maintenance_cost
+          FROM individual_bikes 
+          WHERE is_active = 1
+        `, (err, vehicleCosts) => {
+          if (err) {
+            addLog('error', 'Failed to get vehicle costs', err.message);
+            return res.status(500).json({ error: err.message });
+          }
+          
+          const vehicleCost = vehicleCosts[0] || { total_vehicle_purchase_cost: 0, total_vehicle_maintenance_cost: 0 };
+          
+          results.summary = {
+            totalRevenue,
+            totalFixedCosts,
+            totalVehiclePurchaseCost: vehicleCost.total_vehicle_purchase_cost,
+            totalVehicleMaintenanceCost: vehicleCost.total_vehicle_maintenance_cost,
+            totalCosts: totalFixedCosts + vehicleCost.total_vehicle_purchase_cost + vehicleCost.total_vehicle_maintenance_cost,
+            netProfit: totalRevenue - (totalFixedCosts + vehicleCost.total_vehicle_purchase_cost + vehicleCost.total_vehicle_maintenance_cost),
+            profitMargin: totalRevenue > 0 ? ((totalRevenue - (totalFixedCosts + vehicleCost.total_vehicle_purchase_cost + vehicleCost.total_vehicle_maintenance_cost)) / totalRevenue) * 100 : 0
+          };
+          
+          addLog('info', `Revenue breakdown analytics with vehicle costs retrieved for period: ${period}`);
+          res.json(results);
+        });
       }
     });
   });
@@ -1100,7 +1137,11 @@ app.post('/api/bookings', (req, res) => {
       const stmt = db.prepare("INSERT INTO booking_bikes (booking_id, bike_type, bike_size, bike_suspension, bike_count, has_trailer_hook) VALUES (?, ?, ?, ?, ?, ?)");
       
       for (const bike of bikeDetails) {
-        stmt.run([id, bike.type, bike.size, bike.suspension, bike.count, bike.hasTrailerHook || false], function(err) {
+        // Handle trailers which don't have size/suspension
+        const bikeSize = bike.type === 'trailer' ? 'n/a' : bike.size;
+        const bikeSuspension = bike.type === 'trailer' ? 'n/a' : bike.suspension;
+        
+        stmt.run([id, bike.type, bikeSize, bikeSuspension, bike.count, bike.hasTrailerHook || false], function(err) {
           if (err) {
             bikeInsertError = true;
             addLog('error', 'Failed to insert bike details', { bookingId: id, error: err.message });
@@ -1171,7 +1212,10 @@ app.put('/api/bookings/:id', (req, res) => {
       
       const stmt = db.prepare("INSERT INTO booking_bikes (booking_id, bike_type, bike_size, bike_suspension, bike_count) VALUES (?, ?, ?, ?, ?)");
       bikeDetails.forEach(bike => {
-        stmt.run([req.params.id, bike.type, bike.size, bike.suspension, bike.count]);
+        // Handle trailers which don't have size/suspension
+        const bikeSize = bike.type === 'trailer' ? 'n/a' : bike.size;
+        const bikeSuspension = bike.type === 'trailer' ? 'n/a' : bike.suspension;
+        stmt.run([req.params.id, bike.type, bikeSize, bikeSuspension, bike.count]);
       });
       stmt.finalize();
       
@@ -1731,14 +1775,14 @@ app.post('/api/data/reset', (req, res) => {
         
         // Reset bikes to basic inventory
         const defaultBikes = [
-          { type: 'adulto', size: 'S', suspension: 'front-only', count: 3 },
-          { type: 'adulto', size: 'M', suspension: 'front-only', count: 5 },
-          { type: 'adulto', size: 'L', suspension: 'front-only', count: 4 },
-          { type: 'adulto', size: 'XL', suspension: 'front-only', count: 2 },
+          { type: 'adulto', size: 'S', suspension: 'front', count: 3 },
+          { type: 'adulto', size: 'M', suspension: 'front', count: 5 },
+          { type: 'adulto', size: 'L', suspension: 'front', count: 4 },
+          { type: 'adulto', size: 'XL', suspension: 'front', count: 2 },
           { type: 'adulto', size: 'M', suspension: 'full-suspension', count: 2 },
           { type: 'adulto', size: 'L', suspension: 'full-suspension', count: 2 },
-          { type: 'bambino', size: 'S', suspension: 'front-only', count: 4 },
-          { type: 'bambino', size: 'M', suspension: 'front-only', count: 3 },
+          { type: 'bambino', size: 'S', suspension: 'front', count: 4 },
+          { type: 'bambino', size: 'M', suspension: 'front', count: 3 },
           { type: 'carrello-porta-bimbi', size: '', suspension: '', count: 2 },
           { type: 'trailer', size: '', suspension: '', count: 3 }
         ];
@@ -1923,6 +1967,40 @@ app.get('/api/logs/download/:filename', (req, res) => {
   } catch (error) {
     logger.error('LOG_MANAGEMENT', 'Failed to download log file', { error: error.message, filename });
     res.status(500).json({ error: 'Failed to download log file', details: error.message });
+  }
+});
+
+// Delete log file
+app.delete('/api/logs/delete/:filename', (req, res) => {
+  const { filename } = req.params;
+  
+  try {
+    // Validate filename to prevent directory traversal
+    if (!/^rabbi-ebike-\d{4}-\d{2}-\d{2}\.log$/.test(filename)) {
+      logger.warn('LOG_MANAGEMENT', 'Invalid log filename for deletion', { filename });
+      return res.status(400).json({ error: 'Invalid log filename' });
+    }
+    
+    const logPath = path.join(__dirname, 'logs', filename);
+    
+    // Check if file exists
+    if (!require('fs').existsSync(logPath)) {
+      logger.warn('LOG_MANAGEMENT', 'Log file not found for deletion', { filename });
+      return res.status(404).json({ error: 'Log file not found' });
+    }
+    
+    // Delete the file
+    require('fs').unlinkSync(logPath);
+    
+    logger.info('LOG_MANAGEMENT', 'Log file deleted successfully', { filename });
+    res.json({ 
+      success: true, 
+      message: `Log file "${filename}" deleted successfully` 
+    });
+    
+  } catch (error) {
+    logger.error('LOG_MANAGEMENT', 'Failed to delete log file', { error: error.message, filename });
+    res.status(500).json({ error: 'Failed to delete log file', details: error.message });
   }
 });
 

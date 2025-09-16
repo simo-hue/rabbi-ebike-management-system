@@ -27,8 +27,9 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
   };
 
   const getBikeAvailabilityColor = (date: Date): string => {
+    // Include both confirmed and pending bookings as they reduce availability
     const dayBookings = bookings.filter(booking => 
-      isSameDay(booking.date, date) && booking.status === "confirmed"
+      isSameDay(booking.date, date) && (booking.status === "confirmed" || booking.status === "pending")
     );
 
     // Calculate total bikes used on this day
@@ -39,12 +40,53 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
     // Calculate total available bikes
     const totalBikesAvailable = settings.bikes.filter(bike => bike.isActive).length;
 
+    // Calculate available bikes (not used)
+    const availableBikes = totalBikesAvailable - totalBikesUsed;
+    
     // Calculate availability percentage
-    const availabilityPercentage = ((totalBikesAvailable - totalBikesUsed) / totalBikesAvailable) * 100;
+    const availabilityPercentage = totalBikesAvailable > 0 ? (availableBikes / totalBikesAvailable) * 100 : 100; // If no bikes configured, show as fully available
 
-    if (availabilityPercentage >= 70) return "bg-available"; // Verde - maggior parte disponibili
-    if (availabilityPercentage <= 20) return "bg-unavailable"; // Rosso - poche o nessuna disponibili
-    return "bg-booked"; // Giallo - poche disponibili
+    // Create a smooth gradient from red (0%) to yellow (50%) to green (100%)
+    if (availabilityPercentage === 100) {
+      return "bg-green-500"; // Verde pieno - tutte disponibili
+    } else if (availabilityPercentage >= 90) {
+      return "bg-green-400"; // Verde chiaro
+    } else if (availabilityPercentage >= 80) {
+      return "bg-lime-400"; // Verde-giallo
+    } else if (availabilityPercentage >= 70) {
+      return "bg-yellow-300"; // Giallo chiaro
+    } else if (availabilityPercentage >= 60) {
+      return "bg-yellow-400"; // Giallo
+    } else if (availabilityPercentage >= 50) {
+      return "bg-yellow-500"; // Giallo scuro
+    } else if (availabilityPercentage >= 40) {
+      return "bg-orange-400"; // Arancione chiaro
+    } else if (availabilityPercentage >= 30) {
+      return "bg-orange-500"; // Arancione
+    } else if (availabilityPercentage >= 20) {
+      return "bg-red-400"; // Rosso chiaro
+    } else if (availabilityPercentage > 0) {
+      return "bg-red-500"; // Rosso
+    } else {
+      return "bg-red-600"; // Rosso scuro - nessuna disponibile
+    }
+  };
+
+  const getBikeAvailabilityTooltip = (date: Date): string => {
+    // Include both confirmed and pending bookings as they reduce availability
+    const dayBookings = bookings.filter(booking => 
+      isSameDay(booking.date, date) && (booking.status === "confirmed" || booking.status === "pending")
+    );
+
+    const totalBikesUsed = dayBookings.reduce((total, booking) => {
+      return total + booking.bikeDetails.reduce((bookingTotal, bike) => bookingTotal + bike.count, 0);
+    }, 0);
+
+    const totalBikesAvailable = settings.bikes.filter(bike => bike.isActive).length;
+    const availableBikes = totalBikesAvailable - totalBikesUsed;
+    const availabilityPercentage = totalBikesAvailable > 0 ? Math.round((availableBikes / totalBikesAvailable) * 100) : 100;
+
+    return `Disponibili: ${availableBikes}/${totalBikesAvailable} bici (${availabilityPercentage}%)`;
   };
   
   const getBikeDetailsText = (bikeDetails: BikeDetails[]): string => {
@@ -277,7 +319,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
                             {dayBookings.length}
                           </Badge>
                         )}
-                        <div className={`w-3 h-3 rounded-full ${getBikeAvailabilityColor(day)}`} title="Disponibilità bici"></div>
+                        <div className={`w-3 h-3 rounded-full ${getBikeAvailabilityColor(day)}`} title={getBikeAvailabilityTooltip(day)}></div>
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground font-normal mt-1">
@@ -357,7 +399,7 @@ export const BookingList = ({ bookings, selectedDate, viewMode, settings, onUpda
               <CardContent className="p-2">
                 <div className="text-sm font-medium mb-1 flex items-center justify-between">
                   <span>{format(day, "d")}</span>
-                  <div className={`w-2 h-2 rounded-full ${getBikeAvailabilityColor(day)}`} title="Disponibilità bici"></div>
+                  <div className={`w-2 h-2 rounded-full ${getBikeAvailabilityColor(day)}`} title={getBikeAvailabilityTooltip(day)}></div>
                 </div>
                 <div className="space-y-1">
                   {dayBookings.slice(0, 3).map((booking) => (

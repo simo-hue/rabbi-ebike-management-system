@@ -412,7 +412,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                                    )}
                                  </div>
                                 <p className="text-xs text-muted-foreground">
-                                  {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} • Taglia {bike.size} • {bike.suspension === "full-suspension" ? "Full Suspension" : "Solo Davanti"}
+                                  {bike.type === "bambino" ? "Bambino" : bike.type === "trailer" ? "Carrello" : "Adulto"} • Taglia {bike.size} • {bike.suspension === "full-suspension" ? "Full Suspension" : "Front"}
                                 </p>
                                <p className="text-xs text-muted-foreground">Disponibili: {bike.availableCount}</p>
                              </div>

@@ -105,6 +105,22 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
     }
   };
 
+  // Delete single log file
+  const handleDeleteLog = async (filename: string) => {
+    if (!confirm(`Sei sicuro di voler eliminare il file di log "${filename}"?`)) {
+      return;
+    }
+
+    try {
+      const result = await apiService.deleteLogFile(filename);
+      alert(`File di log eliminato: ${result.message || filename}`);
+      await loadLogInfo(); // Refresh log info
+    } catch (error) {
+      console.error('Failed to delete log file:', error);
+      alert('Errore durante l\'eliminazione del file di log');
+    }
+  };
+
   // Load log info when component mounts
   useEffect(() => {
     loadLogInfo();
@@ -437,14 +453,22 @@ export const SettingsPanel = ({ settings, onSave, onClose }: SettingsPanelProps)
                                     {file.sizeFormatted} • {new Date(file.modified).toLocaleString('it-IT')}
                                   </p>
                                 </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDownloadLog(file.name)}
-                                  className="ml-2"
-                                >
-                                  <DownloadIcon className="w-4 h-4" />
-                                </Button>
+                                <div className="flex gap-1 ml-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDownloadLog(file.name)}
+                                  >
+                                    <DownloadIcon className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteLog(file.name)}
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
                             ))}
                           </div>

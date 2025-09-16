@@ -315,6 +315,12 @@ class ApiService {
     return response.blob();
   }
 
+  async deleteLogFile(filename: string) {
+    return this.fetch(`/logs/delete/${filename}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Individual Bikes management - critical for garage operations
   async getIndividualBikes() {
     return this.getWithOfflineFallback('/individual-bikes', this.CACHE_KEYS.INDIVIDUAL_BIKES);

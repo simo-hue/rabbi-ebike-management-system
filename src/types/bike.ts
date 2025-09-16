@@ -1,6 +1,6 @@
 export type BikeType = "bambino" | "adulto" | "carrello-porta-bimbi" | "trailer";
 export type BikeSize = "S" | "M" | "L" | "XL";
-export type BikeSuspension = "full-suspension" | "front-only";
+export type BikeSuspension = "full-suspension" | "front";
 
 export type MaintenanceRecord = {
   id: string;
