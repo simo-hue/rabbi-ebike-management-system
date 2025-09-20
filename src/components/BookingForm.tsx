@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarIcon, ClockIcon, UserIcon, PhoneIcon, MailIcon, BikeIcon, EuroIcon, UsersIcon, PlusIcon, MinusIcon, XIcon } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import type { Booking, ShopSettings, BikeDetails, BookingCategory } from "./Dashboard";
-import { BikeSelector } from "./BikeSelector";
+import type { Booking, ShopSettings, BikeDetails, BookingCategory, AvailableBike } from "./Dashboard";
+import { IndividualBikeSelector } from "./IndividualBikeSelector";
 
 interface BookingFormProps {
   onSubmit: (booking: Omit<Booking, "id" | "totalPrice">) => void;
@@ -19,10 +19,11 @@ interface BookingFormProps {
   selectedDate: Date;
   settings: ShopSettings;
   getAvailableBikes: (date: Date, startTime: string, endTime: string, category: BookingCategory) => BikeDetails[];
+  getAvailableIndividualBikes: (date: Date, startTime: string, endTime: string, category: BookingCategory) => AvailableBike[];
   editingBooking?: Booking | null;
 }
 
-export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvailableBikes, editingBooking }: BookingFormProps) => {
+export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvailableBikes, getAvailableIndividualBikes, editingBooking }: BookingFormProps) => {
   const [formData, setFormData] = useState({
     customerName: editingBooking?.customerName || "",
     phone: editingBooking?.phone || "",
@@ -252,6 +253,7 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   };
 
   const availableBikes = getAvailableBikes(selectedDate, formData.startTime, formData.endTime, formData.category);
+  const availableIndividualBikes = getAvailableIndividualBikes(selectedDate, formData.startTime, formData.endTime, formData.category);
   const totalAvailable = availableBikes.reduce((sum, bike) => sum + bike.count, 0);
 
   return (
@@ -589,8 +591,8 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
           )}
 
           {/* Bike Selection */}
-          <BikeSelector
-            availableBikes={availableBikes}
+          <IndividualBikeSelector
+            availableBikes={availableIndividualBikes}
             selectedBikes={selectedBikes}
             onSelectionChange={setSelectedBikes}
           />

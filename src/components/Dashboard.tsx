@@ -28,8 +28,8 @@ const FixedCostsManager = lazy(() => import("./FixedCostsManager"));
 import Garage from "./Garage";
 
 // Import types from dedicated file
-import type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord } from "@/types/bike";
-export type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord };
+import type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord, AvailableBike } from "@/types/bike";
+export type { BikeType, BikeSize, BikeSuspension, BikeDetails, Bike, MaintenanceRecord, AvailableBike };
 
 // Full-Featured Garage Component
 const MinimalGarage = ({ bikes, onUpdateBikes, onClose }: { bikes: Bike[], onUpdateBikes: (bikes: Bike[]) => void, onClose: () => void }) => {
@@ -1175,6 +1175,61 @@ export const Dashboard = () => {
     }).filter(bike => bike.count > 0);
   };
 
+  const getAvailableIndividualBikes = (date: Date, startTime: string, endTime: string, category: BookingCategory): AvailableBike[] => {
+    const dayBookings = bookings.filter(
+      booking =>
+        format(booking.date, "yyyy-MM-dd") === format(date, "yyyy-MM-dd") &&
+        booking.status === "confirmed" &&
+        (category === "full-day" || booking.category === "full-day" ||
+         ((startTime >= booking.startTime && startTime < booking.endTime) ||
+          (endTime > booking.startTime && endTime <= booking.endTime) ||
+          (startTime <= booking.startTime && endTime >= booking.endTime)))
+    );
+
+    // Get all booked bike IDs (we'll need to track individual bike bookings in the future)
+    // For now, we'll use the old logic but return individual bikes
+    const bookedByType: Record<string, number> = {};
+    dayBookings.forEach(booking => {
+      booking.bikeDetails.forEach(bike => {
+        const key = `${bike.type}-${bike.size || 'none'}-${bike.suspension || 'none'}-${bike.hasTrailerHook || false}`;
+        bookedByType[key] = (bookedByType[key] || 0) + bike.count;
+      });
+    });
+
+    // Return individual bikes with availability status
+    return individualBikes.filter(bike => bike.isActive).map(bike => {
+      const key = `${bike.type}-${bike.size || 'none'}-${bike.suspension || 'none'}-${bike.hasTrailerHook || false}`;
+      const bookedCount = bookedByType[key] || 0;
+
+      // Count how many bikes of this type are already selected
+      const bikesOfSameType = individualBikes.filter(b =>
+        b.isActive &&
+        b.type === bike.type &&
+        b.size === bike.size &&
+        b.suspension === bike.suspension &&
+        b.hasTrailerHook === bike.hasTrailerHook
+      );
+
+      const bikeIndexInType = bikesOfSameType.findIndex(b => b.id === bike.id);
+      const isAvailable = bikeIndexInType >= bookedCount;
+
+      return {
+        id: bike.id,
+        name: bike.name,
+        brand: bike.brand,
+        model: bike.model,
+        type: bike.type,
+        size: bike.size,
+        suspension: bike.suspension,
+        hasTrailerHook: bike.hasTrailerHook,
+        description: bike.description,
+        isAvailable,
+        minHeight: bike.minHeight,
+        maxHeight: bike.maxHeight
+      };
+    }).filter(bike => bike.isAvailable);
+  };
+
   const calculatePrice = (bikeDetails: BikeDetails[], category: BookingCategory, needsGuide: boolean, startTime: string, endTime: string): number => {
     const totalBikes = bikeDetails.reduce((sum, bike) => sum + bike.count, 0);
     let basePrice = 0;
@@ -1411,6 +1466,7 @@ export const Dashboard = () => {
           selectedDate={selectedDate}
           settings={settings}
           getAvailableBikes={getAvailableBikes}
+          getAvailableIndividualBikes={getAvailableIndividualBikes}
           editingBooking={editingBooking}
         />
       )}

@@ -42,6 +42,22 @@ export type BikeDetails = {
   count: number;
 };
 
+// New type for individual bike selection with names
+export type AvailableBike = {
+  id: string;
+  name: string;
+  brand: string;
+  model?: string;
+  type: BikeType;
+  size?: BikeSize;
+  suspension?: BikeSuspension;
+  hasTrailerHook?: boolean;
+  description: string;
+  isAvailable: boolean;
+  minHeight?: number;
+  maxHeight?: number;
+};
+
 // For booking form - customer height and bike suggestions
 export type CustomerInfo = {
   name: string;

@@ -43,9 +43,27 @@ export const DailyCalendarView = ({
 
   const getBikeDetailsText = (bikeDetails: BikeDetails[]): string => {
     return bikeDetails.map(bike => {
-      const type = bike.type === "bambino" ? "Bambino" : "Adulto";
-      const suspension = bike.suspension === "full-suspension" ? "Full-Sus" : "Front";
-      return `${bike.count}x ${type} ${bike.size} (${suspension})`;
+      // Find the actual bike(s) from settings that match this BikeDetails
+      const matchingBikes = settings.bikes.filter(b =>
+        b.type === bike.type &&
+        b.size === bike.size &&
+        b.suspension === bike.suspension &&
+        b.hasTrailerHook === bike.hasTrailerHook &&
+        b.isActive
+      );
+
+      if (matchingBikes.length > 0) {
+        // Use the actual bike names
+        const bikeNames = matchingBikes.slice(0, bike.count).map(b => b.name);
+        return `${bike.count}x ${bikeNames.join(", ")}`;
+      } else {
+        // Fallback to old behavior if no matching bikes found
+        const type = bike.type === "bambino" ? "Bambino" :
+                     bike.type === "trailer" ? "Carrello" :
+                     bike.type === "carrello-porta-bimbi" ? "Carrello Porta-Bimbi" : "Adulto";
+        const suspension = bike.suspension === "full-suspension" ? "Full-Sus" : "Front";
+        return `${bike.count}x ${type} ${bike.size} (${suspension})`;
+      }
     }).join(", ");
   };
 
