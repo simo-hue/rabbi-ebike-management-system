@@ -1450,6 +1450,7 @@ export const Dashboard = () => {
           bikes={individualBikes}
           onUpdateBikes={setIndividualBikes}
           onClose={() => resetAllViews()}
+          onRefreshData={loadIndividualBikes}
         />
       )}
 

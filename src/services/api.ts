@@ -41,7 +41,7 @@ export interface ApiConfig {
 
 class ApiService {
   private config: ApiConfig = {
-    baseUrl: 'http://localhost:9273/api',
+    baseUrl: 'http://localhost:3001/api',
     timeout: 8000 // Reduced for faster shop experience
   };
   
@@ -175,9 +175,70 @@ class ApiService {
     }
   }
 
-  // Health check
+  // Health check with enhanced monitoring
   async healthCheck() {
-    return this.cachedFetch('/health', {}, 5000); // 5 second cache for health
+    try {
+      const startTime = Date.now();
+      const result = await this.cachedFetch('/health', {}, 5000); // 5 second cache for health
+      const responseTime = Date.now() - startTime;
+
+      // Log performance metrics for monitoring
+      if (responseTime > 1000) {
+        console.warn(`⚠️ Health check slow: ${responseTime}ms`);
+      }
+
+      return {
+        ...result,
+        responseTime,
+        timestamp: new Date().toISOString(),
+        status: 'healthy'
+      };
+    } catch (error) {
+      console.error('❌ Health check failed:', error);
+      return {
+        status: 'unhealthy',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  // Connection status monitoring
+  async checkConnectionStatus(): Promise<boolean> {
+    try {
+      const health = await this.healthCheck();
+      return health.status === 'healthy';
+    } catch {
+      return false;
+    }
+  }
+
+  // Retry with exponential backoff for critical operations
+  async retryOperation<T>(
+    operation: () => Promise<T>,
+    maxRetries = 3,
+    baseDelay = 1000
+  ): Promise<T> {
+    let lastError: Error;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+
+        if (attempt === maxRetries) {
+          console.error(`❌ Operation failed after ${maxRetries + 1} attempts:`, lastError);
+          throw lastError;
+        }
+
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.warn(`⚠️ Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError!;
   }
 
   // Settings - critical for shop operations

@@ -32,16 +32,37 @@ interface GarageProps {
   bikes: Bike[];
   onUpdateBikes: (bikes: Bike[]) => void;
   onClose: () => void;
+  onRefreshData?: () => Promise<void>;
 }
 
-const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
+const Garage = ({ bikes, onUpdateBikes, onClose, onRefreshData }: GarageProps) => {
   const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
   const [isAddingBike, setIsAddingBike] = useState(false);
   const [isAddingTrailer, setIsAddingTrailer] = useState(false);
   const [isAddingMaintenance, setIsAddingMaintenance] = useState(false);
   const [view, setView] = useState<"list" | "stats">("list");
   const [showCostDetails, setShowCostDetails] = useState(false);
+  const [isEditingBike, setIsEditingBike] = useState(false);
+  const [editingBikeData, setEditingBikeData] = useState<Bike | null>(null);
+  const [dialogKey, setDialogKey] = useState(0);
   const { toast } = useToast();
+
+  // Helper function to refresh data and close garage
+  const refreshAndClose = async () => {
+    console.log('🔄 [REFRESH] Starting refresh and close...');
+    try {
+      if (onRefreshData) {
+        console.log('🔄 [REFRESH] Calling onRefreshData...');
+        await onRefreshData();
+        console.log('✅ [REFRESH] Data refreshed successfully');
+      }
+    } catch (error) {
+      console.error('❌ [REFRESH] Failed to refresh data:', error);
+    } finally {
+      console.log('🏠 [REFRESH] Closing garage...');
+      onClose();
+    }
+  };
 
   const [newBike, setNewBike] = useState<Partial<Bike> & { quantity?: number }>({
     name: "",
@@ -140,6 +161,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
         title: "Successo",
         description: `${quantity > 1 ? `${quantity} biciclette aggiunte` : "Bicicletta aggiunta"} al database`
       });
+
     } catch (error) {
       console.error('Failed to add bike:', error);
       toast({
@@ -200,6 +222,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
         title: "Successo",
         description: `${quantity > 1 ? `${quantity} carrelli aggiunti` : "Carrello aggiunto"} al database`
       });
+
     } catch (error) {
       console.error('Failed to add trailer:', error);
       toast({
@@ -210,28 +233,35 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
     }
   };
 
-  const handleUpdateBike = async (updatedBike: Bike) => {
-    console.log('🔄 [UPDATE_BIKE] Starting handleUpdateBike for bike:', updatedBike.id);
+  const handleUpdateBike = async (updatedBike: Bike, updateLocalState = true) => {
+    console.log('🔄 [UPDATE_BIKE] Starting handleUpdateBike for bike:', updatedBike.id, 'updateLocalState:', updateLocalState);
     try {
       console.log('📡 [UPDATE_BIKE] Calling API updateIndividualBike...');
       const savedBike = await apiService.updateIndividualBike(updatedBike.id, updatedBike);
       console.log('✅ [UPDATE_BIKE] API call successful, saved bike ID:', savedBike.id);
-      
-      console.log('🔄 [UPDATE_BIKE] Updating bikes array...');
-      const updatedBikes = bikes.map(bike => 
-        bike.id === updatedBike.id ? savedBike : bike
-      );
-      console.log('✅ [UPDATE_BIKE] Bikes array updated');
-      
-      console.log('🚲 [UPDATE_BIKE] Calling onUpdateBikes...');
-      onUpdateBikes(updatedBikes);
-      console.log('✅ [UPDATE_BIKE] onUpdateBikes completed');
-      
-      console.log('🎯 [UPDATE_BIKE] Setting selectedBike...');
-      setSelectedBike(savedBike);
-      console.log('✅ [UPDATE_BIKE] selectedBike set successfully');
-      
+
+      // Only update local state if requested (avoids conflicts with save/maintenance flows)
+      if (updateLocalState) {
+        console.log('🔄 [UPDATE_BIKE] Updating bikes array...');
+        // Ensure savedBike has maintenance array initialized
+        const bikeWithMaintenance = {
+          ...savedBike,
+          maintenance: savedBike.maintenance || []
+        };
+        const updatedBikes = bikes.map(bike =>
+          bike.id === updatedBike.id ? bikeWithMaintenance : bike
+        );
+        console.log('✅ [UPDATE_BIKE] Bikes array updated with maintenance check');
+
+        console.log('🚲 [UPDATE_BIKE] Calling onUpdateBikes...');
+        onUpdateBikes(updatedBikes);
+        console.log('✅ [UPDATE_BIKE] onUpdateBikes completed');
+      } else {
+        console.log('🎯 [UPDATE_BIKE] Skipping local state update - caller will handle it');
+      }
+
       console.log('✅ [UPDATE_BIKE] handleUpdateBike completed successfully');
+      return savedBike; // Return the saved bike for caller to use
     } catch (error) {
       console.error('❌ [UPDATE_BIKE] ERROR in handleUpdateBike:', error);
       toast({
@@ -246,19 +276,96 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
   const handleDeleteBike = async (bikeId: string) => {
     try {
       await apiService.deleteIndividualBike(bikeId);
-      const updatedBikes = bikes.filter(bike => bike.id !== bikeId);
-      onUpdateBikes(updatedBikes);
+
+      // Update bikes list locally and remove from state
+      onUpdateBikes(bikes.filter(bike => bike.id !== bikeId));
       setSelectedBike(null);
-      
+
       toast({
         title: "Successo",
-        description: "Bicicletta eliminata dal database"
+        description: "Bicicletta eliminata"
       });
     } catch (error) {
       console.error('Failed to delete bike:', error);
       toast({
         title: "Errore",
         description: "Impossibile eliminare la bicicletta dal database",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStartEditing = (bike: Bike) => {
+    console.log('🔧 Starting edit mode for bike:', bike.name);
+    setEditingBikeData({ ...bike });
+    setIsEditingBike(true);
+    console.log('🔧 Edit mode activated');
+  };
+
+  const handleCancelEditing = () => {
+    console.log('❌ Cancelling edit mode');
+    setIsEditingBike(false);
+    setEditingBikeData(null);
+    console.log('❌ Edit mode cancelled');
+  };
+
+  const handleSaveEditing = async () => {
+    console.log('💾 [SAVE] Starting save process');
+    if (!editingBikeData || !selectedBike) {
+      console.log('❌ [SAVE] No editingBikeData or selectedBike found');
+      return;
+    }
+
+    console.log('💾 [SAVE] Original bike data:', selectedBike);
+    console.log('💾 [SAVE] Edited data:', editingBikeData);
+
+    // Merge original bike data with only the modified fields
+    const mergedBikeData = {
+      ...selectedBike, // Keep all original data
+      ...editingBikeData, // Override with edited fields
+      // Ensure critical fields are preserved
+      id: selectedBike.id,
+      maintenance: selectedBike.maintenance || [],
+      totalMaintenanceCost: selectedBike.totalMaintenanceCost || 0,
+      lastMaintenanceDate: selectedBike.lastMaintenanceDate
+    };
+
+    console.log('💾 [SAVE] Merged data to save:', mergedBikeData);
+
+    try {
+      console.log('💾 [SAVE] Calling handleUpdateBike...');
+      const savedBike = await handleUpdateBike(mergedBikeData, false); // Don't update state in handleUpdateBike
+      console.log('✅ [SAVE] handleUpdateBike completed successfully');
+
+      // Update local state with saved bike from server to ensure UI sync
+      console.log('🔄 [SAVE] Updating local bikes state with server data...');
+      const bikeWithMaintenance = {
+        ...savedBike,
+        maintenance: savedBike.maintenance || []
+      };
+      const updatedBikes = bikes.map(bike =>
+        bike.id === selectedBike.id ? bikeWithMaintenance : bike
+      );
+      onUpdateBikes(updatedBikes);
+      console.log('✅ [SAVE] Local bikes state updated with server data');
+
+      // Show success message and return to dashboard
+      toast({
+        title: "Successo",
+        description: "Veicolo aggiornato con successo. Torno alla dashboard..."
+      });
+
+      console.log('✅ [SAVE] Success toast shown, returning to dashboard...');
+
+      // Return to dashboard after a short delay to ensure the toast is visible
+      setTimeout(() => {
+        refreshAndClose();
+      }, 1500);
+    } catch (error) {
+      console.error('❌ [SAVE] Failed to save bike edits:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare le modifiche",
         variant: "destructive"
       });
     }
@@ -310,9 +417,21 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       console.log('🚲 [MAINTENANCE] Updated bike created, maintenance count:', updatedBike.maintenance.length);
 
       console.log('🔄 [MAINTENANCE] Calling handleUpdateBike...');
-      await handleUpdateBike(updatedBike);
+      const savedBike = await handleUpdateBike(updatedBike, false); // Don't update state in handleUpdateBike
       console.log('✅ [MAINTENANCE] handleUpdateBike completed');
-      
+
+      // Update local state with saved bike from server to ensure UI sync
+      console.log('🔄 [MAINTENANCE] Updating local bikes state with server data...');
+      const bikeWithMaintenance = {
+        ...savedBike,
+        maintenance: savedBike.maintenance || []
+      };
+      const updatedBikes = bikes.map(bike =>
+        bike.id === selectedBike.id ? bikeWithMaintenance : bike
+      );
+      onUpdateBikes(updatedBikes);
+      console.log('✅ [MAINTENANCE] Local bikes state updated with server data');
+
       console.log('🧹 [MAINTENANCE] Resetting form state...');
       setNewMaintenance({
         type: "",
@@ -322,7 +441,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
         notes: ""
       });
       console.log('✅ [MAINTENANCE] Form reset completed');
-      
+
       console.log('❌ [MAINTENANCE] Closing dialog...');
       setIsAddingMaintenance(false);
       console.log('✅ [MAINTENANCE] Dialog closed');
@@ -330,9 +449,15 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
       console.log('🎉 [MAINTENANCE] Showing success toast...');
       toast({
         title: "Successo",
-        description: "Manutenzione registrata"
+        description: "Manutenzione registrata. Torno alla dashboard..."
       });
-      console.log('✅ [MAINTENANCE] SUCCESS - All operations completed successfully');
+
+      // Return to dashboard after maintenance addition with updated state
+      setTimeout(() => {
+        refreshAndClose();
+      }, 1500);
+
+      console.log('✅ [MAINTENANCE] SUCCESS - All operations completed, returning to dashboard');
       
     } catch (error) {
       console.error('❌ [MAINTENANCE] ERROR in handleAddMaintenance:', error);
@@ -453,7 +578,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                           )}
                           <div className="flex justify-between text-sm">
                             <span>Manutenzioni:</span>
-                            <span>{bike.maintenance.length}</span>
+                            <span>{bike.maintenance?.length || 0}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Costo manutenzioni:</span>
@@ -539,7 +664,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                         )}
                         <div className="flex justify-between text-sm">
                           <span>Manutenzioni:</span>
-                          <span>{bike.maintenance.length}</span>
+                          <span>{bike.maintenance?.length || 0}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Costo manutenzioni:</span>
@@ -629,13 +754,13 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {bikes.reduce((sum, bike) => sum + bike.maintenance.length, 0)}
+                      {bikes.reduce((sum, bike) => sum + (bike.maintenance?.length || 0), 0)}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Ultimo mese: {bikes.reduce((sum, bike) => {
                         const lastMonth = new Date();
                         lastMonth.setMonth(lastMonth.getMonth() - 1);
-                        return sum + bike.maintenance.filter(m => new Date(m.date) > lastMonth).length;
+                        return sum + (bike.maintenance?.filter(m => new Date(m.date) > lastMonth).length || 0);
                       }, 0)}
                     </p>
                   </CardContent>
@@ -685,7 +810,7 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                             <TableCell className="font-medium">{bike.name}</TableCell>
                             <TableCell>{bike.brand}</TableCell>
                             <TableCell className="capitalize">{bike.type} {bike.size || ""}</TableCell>
-                            <TableCell>{bike.maintenance.length}</TableCell>
+                            <TableCell>{bike.maintenance?.length || 0}</TableCell>
                             <TableCell>€{bike.totalMaintenanceCost}</TableCell>
                             <TableCell className={getProfitabilityColor(profitability)}>
                               €{profitability.toFixed(0)}
@@ -924,7 +1049,10 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
           shouldShow: shouldShowDetailsDialog
         });
         return selectedBike ? (
-          <Dialog open={shouldShowDetailsDialog} onOpenChange={() => setSelectedBike(null)}>
+          <Dialog key={`dialog-${dialogKey}`} open={shouldShowDetailsDialog} onOpenChange={() => {
+            setSelectedBike(null);
+            handleCancelEditing();
+          }}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedBike.name}</DialogTitle>
@@ -945,23 +1073,55 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nome</Label>
-                      <Input value={selectedBike.name} readOnly />
+                      <Input
+                        key={`name-${isEditingBike ? 'edit' : 'view'}`}
+                        value={isEditingBike ? (editingBikeData?.name || '') : selectedBike.name}
+                        readOnly={!isEditingBike}
+                        onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                          ...editingBikeData,
+                          name: e.target.value
+                        })}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Marca</Label>
-                      <Input value={selectedBike.brand} readOnly />
+                      <Input
+                        key={`brand-${isEditingBike ? 'edit' : 'view'}`}
+                        value={isEditingBike ? (editingBikeData?.brand || '') : selectedBike.brand}
+                        readOnly={!isEditingBike}
+                        onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                          ...editingBikeData,
+                          brand: e.target.value
+                        })}
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Modello</Label>
-                    <Input value={selectedBike.model} readOnly />
+                    <Input
+                      key={`model-${isEditingBike ? 'edit' : 'view'}`}
+                      value={isEditingBike ? (editingBikeData?.model || '') : selectedBike.model}
+                      readOnly={!isEditingBike}
+                      onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                        ...editingBikeData,
+                        model: e.target.value
+                      })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Tipo</Label>
-                      <Select disabled value={selectedBike.type}>
+                      <Select
+                        key={`type-${isEditingBike ? 'edit' : 'view'}`}
+                        disabled={!isEditingBike}
+                        value={isEditingBike ? (editingBikeData?.type || '') : selectedBike.type}
+                        onValueChange={(value: BikeType) => isEditingBike && editingBikeData && setEditingBikeData({
+                          ...editingBikeData,
+                          type: value
+                        })}
+                      >
                         <SelectTrigger>
                           <SelectValue className="capitalize" />
                         </SelectTrigger>
@@ -972,11 +1132,19 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                         </SelectContent>
                       </Select>
                     </div>
-                    {selectedBike.type !== 'trailer' && (
+                    {(isEditingBike ? editingBikeData?.type : selectedBike.type) !== 'trailer' && (
                       <>
                         <div className="space-y-2">
                           <Label>Taglia</Label>
-                          <Select disabled value={selectedBike.size || ""}>
+                          <Select
+                            key={`size-${isEditingBike ? 'edit' : 'view'}`}
+                            disabled={!isEditingBike}
+                            value={isEditingBike ? (editingBikeData?.size || '') : (selectedBike.size || "")}
+                            onValueChange={(value: BikeSize) => isEditingBike && editingBikeData && setEditingBikeData({
+                              ...editingBikeData,
+                              size: value
+                            })}
+                          >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
@@ -990,7 +1158,15 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                         </div>
                         <div className="space-y-2">
                           <Label>Sospensioni</Label>
-                          <Select disabled value={selectedBike.suspension || ""}>
+                          <Select
+                            key={`suspension-${isEditingBike ? 'edit' : 'view'}`}
+                            disabled={!isEditingBike}
+                            value={isEditingBike ? (editingBikeData?.suspension || '') : (selectedBike.suspension || "")}
+                            onValueChange={(value: BikeSuspension) => isEditingBike && editingBikeData && setEditingBikeData({
+                              ...editingBikeData,
+                              suspension: value
+                            })}
+                          >
                             <SelectTrigger>
                               <SelectValue className="capitalize" />
                             </SelectTrigger>
@@ -1006,18 +1182,45 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
 
                   <div className="space-y-2">
                     <Label>Descrizione</Label>
-                    <Textarea value={selectedBike.description} readOnly rows={3} />
+                    <Textarea
+                      key={`description-${isEditingBike ? 'edit' : 'view'}`}
+                      value={isEditingBike ? (editingBikeData?.description || '') : selectedBike.description}
+                      readOnly={!isEditingBike}
+                      onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                        ...editingBikeData,
+                        description: e.target.value
+                      })}
+                      rows={3}
+                    />
                   </div>
 
-                  {selectedBike.type !== 'trailer' && (
+                  {(isEditingBike ? editingBikeData?.type : selectedBike.type) !== 'trailer' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Altezza Minima (cm)</Label>
-                        <Input value={selectedBike.minHeight?.toString() || ""} readOnly type="number" />
+                        <Input
+                          key={`minHeight-${isEditingBike ? 'edit' : 'view'}`}
+                          value={isEditingBike ? (editingBikeData?.minHeight?.toString() || '') : (selectedBike.minHeight?.toString() || "")}
+                          readOnly={!isEditingBike}
+                          type="number"
+                          onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                            ...editingBikeData,
+                            minHeight: parseInt(e.target.value) || undefined
+                          })}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Altezza Massima (cm)</Label>
-                        <Input value={selectedBike.maxHeight?.toString() || ""} readOnly type="number" />
+                        <Input
+                          key={`maxHeight-${isEditingBike ? 'edit' : 'view'}`}
+                          value={isEditingBike ? (editingBikeData?.maxHeight?.toString() || '') : (selectedBike.maxHeight?.toString() || "")}
+                          readOnly={!isEditingBike}
+                          type="number"
+                          onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                            ...editingBikeData,
+                            maxHeight: parseInt(e.target.value) || undefined
+                          })}
+                        />
                       </div>
                     </div>
                   )}
@@ -1026,19 +1229,68 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
                     <div className="space-y-2">
                       <Label>Data Acquisto</Label>
                       <Input
-                        value={selectedBike.purchaseDate ? new Date(selectedBike.purchaseDate).toLocaleDateString() : "N/A"}
-                        readOnly
+                        key={`purchaseDate-${isEditingBike ? 'edit' : 'view'}`}
+                        value={
+                          isEditingBike
+                            ? (editingBikeData?.purchaseDate ? new Date(editingBikeData.purchaseDate).toISOString().split('T')[0] : "")
+                            : (selectedBike.purchaseDate ? new Date(selectedBike.purchaseDate).toLocaleDateString() : "N/A")
+                        }
+                        readOnly={!isEditingBike}
+                        type={isEditingBike ? "date" : "text"}
+                        onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                          ...editingBikeData,
+                          purchaseDate: e.target.value ? new Date(e.target.value) : undefined
+                        })}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Prezzo Acquisto (€)</Label>
-                      <Input value={selectedBike.purchasePrice?.toString() || "N/A"} readOnly type="number" />
+                      <Input
+                        key={`purchasePrice-${isEditingBike ? 'edit' : 'view'}`}
+                        value={
+                          isEditingBike
+                            ? (editingBikeData?.purchasePrice?.toString() || "")
+                            : (selectedBike.purchasePrice?.toString() || "N/A")
+                        }
+                        readOnly={!isEditingBike}
+                        type="number"
+                        step="0.01"
+                        onChange={(e) => isEditingBike && editingBikeData && setEditingBikeData({
+                          ...editingBikeData,
+                          purchasePrice: parseFloat(e.target.value) || undefined
+                        })}
+                      />
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Switch checked={selectedBike.isActive} disabled />
-                    <Label>{selectedBike.type === 'trailer' ? 'Carrello attivo' : 'Bicicletta attiva'}</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        key={`isActive-${isEditingBike ? 'edit' : 'view'}`}
+                        checked={isEditingBike ? (editingBikeData?.isActive || false) : selectedBike.isActive}
+                        disabled={!isEditingBike}
+                        onCheckedChange={(checked) => isEditingBike && editingBikeData && setEditingBikeData({
+                          ...editingBikeData,
+                          isActive: checked
+                        })}
+                      />
+                      <Label>{(isEditingBike ? editingBikeData?.type : selectedBike.type) === 'trailer' ? 'Carrello attivo' : 'Bicicletta attiva'}</Label>
+                    </div>
+
+                    {(isEditingBike ? editingBikeData?.type : selectedBike.type) !== 'trailer' && (
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          key={`hasTrailerHook-${isEditingBike ? 'edit' : 'view'}`}
+                          checked={isEditingBike ? (editingBikeData?.hasTrailerHook || false) : (selectedBike.hasTrailerHook || false)}
+                          disabled={!isEditingBike}
+                          onCheckedChange={(checked) => isEditingBike && editingBikeData && setEditingBikeData({
+                            ...editingBikeData,
+                            hasTrailerHook: checked
+                          })}
+                        />
+                        <Label>Gancio per carrello</Label>
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -1135,18 +1387,44 @@ const Garage = ({ bikes, onUpdateBikes, onClose }: GarageProps) => {
             </Tabs>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button 
-                variant="destructive" 
-                onClick={() => {
-                  handleDeleteBike(selectedBike.id);
-                }}
-              >
-                <TrashIcon className="w-4 h-4 mr-2" />
-                Elimina
-              </Button>
-              <Button variant="outline" onClick={() => setSelectedBike(null)}>
-                Chiudi
-              </Button>
+              {!isEditingBike ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleStartEditing(selectedBike)}
+                  >
+                    <EditIcon className="w-4 h-4 mr-2" />
+                    Modifica
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      handleDeleteBike(selectedBike.id);
+                    }}
+                  >
+                    <TrashIcon className="w-4 h-4 mr-2" />
+                    Elimina
+                  </Button>
+                  <Button variant="outline" onClick={() => setSelectedBike(null)}>
+                    Chiudi
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelEditing}
+                  >
+                    Annulla
+                  </Button>
+                  <Button
+                    onClick={handleSaveEditing}
+                  >
+                    <SaveIcon className="w-4 h-4 mr-2" />
+                    Salva
+                  </Button>
+                </>
+              )}
             </div>
           </DialogContent>
         </Dialog>

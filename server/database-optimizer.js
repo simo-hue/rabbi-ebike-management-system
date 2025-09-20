@@ -348,22 +348,88 @@ class MaintenanceScheduler {
   constructor(dbOptimizer) {
     this.optimizer = dbOptimizer;
     this.lastMaintenance = null;
+    this.lastBackup = null;
+    this.fs = require('fs');
+    this.path = require('path');
+  }
+
+  // Crea backup automatico
+  async createAutomaticBackup() {
+    try {
+      console.log('💾 Creating automatic backup...');
+
+      const backupDir = this.path.join(__dirname, 'backups');
+      if (!this.fs.existsSync(backupDir)) {
+        this.fs.mkdirSync(backupDir, { recursive: true });
+      }
+
+      // Nome file con timestamp per backup automatico
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = this.path.join(backupDir, `auto-backup-${timestamp}.db`);
+
+      // Copia il database
+      await new Promise((resolve, reject) => {
+        this.fs.copyFile(this.optimizer.dbPath, backupPath, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // Pulisci vecchi backup (mantieni solo gli ultimi 30)
+      await this.cleanOldBackups(backupDir);
+
+      this.lastBackup = new Date();
+      console.log(`✅ Automatic backup created: ${backupPath}`);
+
+      return { success: true, backupPath, timestamp: this.lastBackup };
+    } catch (error) {
+      console.error('❌ Automatic backup failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Pulisce vecchi backup
+  async cleanOldBackups(backupDir, maxFiles = 30) {
+    try {
+      const files = this.fs.readdirSync(backupDir)
+        .filter(file => file.startsWith('auto-backup-') && file.endsWith('.db'))
+        .map(file => ({
+          name: file,
+          path: this.path.join(backupDir, file),
+          mtime: this.fs.statSync(this.path.join(backupDir, file)).mtime
+        }))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      // Rimuovi i file più vecchi
+      if (files.length > maxFiles) {
+        const filesToDelete = files.slice(maxFiles);
+        for (const file of filesToDelete) {
+          this.fs.unlinkSync(file.path);
+          console.log(`🗑️ Removed old backup: ${file.name}`);
+        }
+      }
+    } catch (error) {
+      console.warn('Warning cleaning old backups:', error.message);
+    }
   }
 
   // Avvia manutenzione schedulata
   start() {
+    // Backup automatico ogni 24 ore (personalizzabile)
+    this.startBackupSchedule();
+
     // Manutenzione ogni notte alle 3:00
     const scheduleDaily = () => {
       const now = new Date();
       const next3AM = new Date();
       next3AM.setHours(3, 0, 0, 0);
-      
+
       if (next3AM <= now) {
         next3AM.setDate(next3AM.getDate() + 1);
       }
-      
+
       const msUntil3AM = next3AM.getTime() - now.getTime();
-      
+
       setTimeout(async () => {
         console.log('🌙 Starting nightly maintenance...');
         try {
@@ -373,15 +439,34 @@ class MaintenanceScheduler {
         } catch (error) {
           console.error('❌ Maintenance failed:', error);
         }
-        
+
         // Schedule next maintenance
         scheduleDaily();
       }, msUntil3AM);
-      
+
       console.log(`⏰ Next maintenance scheduled for ${next3AM.toLocaleString()}`);
     };
-    
+
     scheduleDaily();
+  }
+
+  // Avvia schedule backup automatico
+  startBackupSchedule() {
+    // Backup ogni 24 ore
+    const backupInterval = 24 * 60 * 60 * 1000; // 24 ore in millisecondi
+
+    // Primo backup dopo 1 ora di avvio
+    setTimeout(async () => {
+      await this.createAutomaticBackup();
+
+      // Poi ogni 24 ore
+      setInterval(async () => {
+        await this.createAutomaticBackup();
+      }, backupInterval);
+
+    }, 60 * 60 * 1000); // Primo backup dopo 1 ora
+
+    console.log('💾 Automatic backup scheduled every 24 hours');
   }
   
   // Manutenzione manuale

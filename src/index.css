@@ -137,4 +137,96 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Ensure all form elements respect dark mode */
+  input, textarea, select, option {
+    @apply bg-background text-foreground border-border;
+  }
+
+  /* Native select styling for dark mode */
+  select {
+    @apply bg-background text-foreground border-border;
+  }
+
+  select option {
+    @apply bg-background text-foreground;
+  }
+
+  /* Ensure all dialogs and popovers use proper colors */
+  [data-radix-popper-content-wrapper] {
+    z-index: 50;
+  }
+
+  /* Override any white backgrounds that might be hardcoded */
+  .dark [data-radix-select-content],
+  .dark [data-radix-popover-content],
+  .dark [data-radix-dropdown-menu-content],
+  .dark [data-radix-context-menu-content] {
+    @apply bg-popover text-popover-foreground border-border !important;
+  }
+
+  /* Ensure select items are properly styled in dark mode */
+  .dark [data-radix-select-item],
+  .dark [data-radix-dropdown-menu-item],
+  .dark [data-radix-context-menu-item] {
+    @apply text-popover-foreground hover:bg-accent hover:text-accent-foreground !important;
+  }
+
+  /* Ensure input fields work in dark mode */
+  .dark input[type="time"],
+  .dark input[type="date"],
+  .dark input[type="number"],
+  .dark input[type="text"],
+  .dark input[type="email"],
+  .dark input[type="tel"],
+  .dark input[type="password"],
+  .dark textarea {
+    @apply bg-background text-foreground border-border !important;
+    color-scheme: dark;
+  }
+
+  /* Calendar widget styling for dark mode */
+  .dark input[type="time"]::-webkit-calendar-picker-indicator,
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+
+  /* Scrollbars in dark mode */
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+/* Additional utilities for dark mode compatibility */
+@layer utilities {
+  .force-dark-theme {
+    color-scheme: dark !important;
+  }
+
+  .force-light-theme {
+    color-scheme: light !important;
+  }
+
+  /* Ensure buttons maintain proper contrast */
+  .dark .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+
+  .dark .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
 }

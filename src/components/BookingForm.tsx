@@ -149,8 +149,13 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
   };
 
   const addCustomer = () => {
-    const newIndex = customers.length + 1;
-    setCustomers([...customers, { name: `Persona ${newIndex}`, height: 0 }]);
+    const totalBikes = selectedBikes.reduce((sum, bike) => sum + bike.count, 0);
+
+    // Limita il numero di clienti al numero di bici disponibili
+    if (customers.length < totalBikes) {
+      const newIndex = customers.length + 1;
+      setCustomers([...customers, { name: `Persona ${newIndex}`, height: 0 }]);
+    }
   };
 
   const removeCustomer = (index: number) => {
@@ -331,9 +336,15 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-2">
                 <UsersIcon className="w-4 h-4" />
-                Clienti e Altezze
+                Clienti e Altezze {selectedBikes.length > 0 && `(${customers.length}/${selectedBikes.reduce((sum, bike) => sum + bike.count, 0)})`}
               </Label>
-              <Button type="button" variant="outline" size="sm" onClick={addCustomer}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addCustomer}
+                disabled={customers.length >= selectedBikes.reduce((sum, bike) => sum + bike.count, 0)}
+              >
                 <PlusIcon className="w-4 h-4 mr-1" />
                 Aggiungi Cliente
               </Button>
@@ -514,18 +525,32 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                   <ClockIcon className="w-4 h-4" />
                   Orario Inizio *
                 </Label>
-                <select
-                  id="startTime"
-                  value={formData.startTime}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {generateTimeOptions().slice(0, -1).map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    className="flex-1"
+                  />
+                  <Select
+                    value={formData.startTime}
+                    onValueChange={(value) => setFormData({ ...formData, startTime: value })}
+                  >
+                    <SelectTrigger className="w-12">
+                      <div className="w-4 h-4 bg-muted rounded flex items-center justify-center">
+                        <div className="w-2 h-2 bg-foreground rounded-full"></div>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {generateTimeOptions().slice(0, -1).map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -533,18 +558,32 @@ export const BookingForm = ({ onSubmit, onClose, selectedDate, settings, getAvai
                   <ClockIcon className="w-4 h-4" />
                   Orario Fine *
                 </Label>
-                <select
-                  id="endTime"
-                  value={formData.endTime}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {generateTimeOptions().slice(1).map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                    className="flex-1"
+                  />
+                  <Select
+                    value={formData.endTime}
+                    onValueChange={(value) => setFormData({ ...formData, endTime: value })}
+                  >
+                    <SelectTrigger className="w-12">
+                      <div className="w-4 h-4 bg-muted rounded flex items-center justify-center">
+                        <div className="w-2 h-2 bg-foreground rounded-full"></div>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {generateTimeOptions().slice(1).map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           )}

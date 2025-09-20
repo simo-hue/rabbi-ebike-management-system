@@ -8,7 +8,7 @@ const { DatabaseOptimizer, MaintenanceScheduler } = require('./database-optimize
 const { optimizedMiddleware, scheduleMemoryCleanup, LightweightMonitor } = require('./optimizations');
 
 const app = express();
-const PORT = process.env.PORT || 9273;
+const PORT = process.env.PORT || 3001;
 
 // Performance monitoring variables
 let requestCount = 0;
