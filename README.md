@@ -212,6 +212,20 @@ rabbieebike/
 
 ## 🔧 Installazione e Setup
 
+### 🎬 Video Tutorial
+
+[![Tutorial Installazione e Demo](https://img.shields.io/badge/▶️%20Guarda%20il%20Video-Tutorial%20Completo-red?style=for-the-badge&logo=youtube)](https://youtu.be/0bAQhf6zgMg)
+
+**🎯 Guarda il video tutorial completo:**
+- ✅ Installazione guidata step-by-step
+- ✅ Prima configurazione del sistema  
+- ✅ Demo funzionalità principali
+- ✅ Tips e best practices per l'uso quotidiano
+
+> 📺 **Durata:** ~30 minuti | **Livello:** Principianti | **Lingua:** Italiano
+
+---
+
 ### 📖 Guide Dettagliate per ogni Utente
 
 Scegli la guida più adatta alle tue competenze tecniche:
