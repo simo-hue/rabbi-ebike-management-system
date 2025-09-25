@@ -222,7 +222,7 @@ rabbieebike/
 - ✅ Demo funzionalità principali
 - ✅ Tips e best practices per l'uso quotidiano
 
-> 📺 **Durata:** ~30 minuti | **Livello:** Principianti | **Lingua:** Italiano
+> 📺 **Durata:** ~3 minuti | **Livello:** Principianti | **Lingua:** Inglese
 
 ---
 
